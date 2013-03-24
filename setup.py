@@ -4,7 +4,7 @@ setup(
     name='pyramid_apitree',
     version='0.0.1',
     author='Josh Matthias',
-    author_email='pyramid_apitree@gmail.com',
+    author_email='pyramid.apitree@gmail.com',
     packages=['pyramid_apitree'],
     scripts=[],
     url='https://github.com/jmatthias/pyramid_apitree',
