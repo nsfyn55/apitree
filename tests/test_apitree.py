@@ -4,6 +4,7 @@ import pytest
 from pyramid_apitree import (
     scan_api_tree,
     )
+from pyramid_apitree.tree_scan import ALL_REQUEST_METHODS
 from pyramid_apitree.exc import BadAPITreeError
 
 """ An example API tree.
@@ -30,7 +31,6 @@ def make_request_methods_tuple(request_method):
     """ The Pyramid 'Configurator' 'add_view' and 'add_route' methods allow the
         'request_method' to either be a string value or a tuple of string
         values. This function duplicates that behavior. """
-    ALL_REQUEST_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'HEAD')
     
     if isinstance(request_method, tuple):
         return request_method
@@ -233,6 +233,12 @@ class TestExceptions(unittest.TestCase):
                 '/xxx': self.dummy
                 }
             }
+        self.exception_test(api_tree)
+    
+    def test_invalid_branch_route_object(self):
+        """ A 'branch route' is something besides a string, a request method
+            string, or a tuple of request methods. """
+        api_tree = {object(): self.dummy}
         self.exception_test(api_tree)
     
     
