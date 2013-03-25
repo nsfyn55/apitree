@@ -107,9 +107,6 @@ class ScanTest(unittest.TestCase):
             
             view_dict = config.views[path][item].copy()
             
-            print view_dict
-            print view_dict_expected
-            
             assert view_dict == view_dict_expected
 
 class TestRequestMethods(ScanTest):
@@ -137,7 +134,6 @@ class TestRequestMethods(ScanTest):
         self.request_method_test(request_method=('GET', 'POST'))
 
 class TestRequestMethodsMultipleEndpoints(ScanTest):
-    @pytest.mark.xfail
     def test_multiple_endpoints(self):
         self.api_tree = {
             'GET': self.dummy,
