@@ -50,15 +50,16 @@ class MockConfigurator(object):
         self,
         view,
         route_name,
-        request_method=None,
         **kwargs
         ):
-        request_methods = make_request_methods_tuple(request_method)
-        
         view_dict = kwargs
         view_dict['view_callable'] = view
         
         config_view = self.views.setdefault(route_name, dict())
+        
+        request_methods = make_request_methods_tuple(
+            kwargs.get('request_method', None)
+            )
         
         for item in request_methods:
             config_view[item] = view_dict
@@ -83,10 +84,12 @@ class ScanTest(unittest.TestCase):
     def dummy(*pargs, **kwargs):
         """ Another dummy 'view_callable' object. """
     
-    def endpoint_test(self, path, request_method=None, expected={}):
-        expected['view_callable'] = self.target
+    def endpoint_test(self, path, **expected_view_dict):
+        expected_view_dict['view_callable'] = self.target
         
-        request_methods = make_request_methods_tuple(request_method)
+        request_methods = make_request_methods_tuple(
+            expected_view_dict.get('request_method', None)
+            )
         
         config = MockConfigurator()
         scan_api_tree(
@@ -99,9 +102,15 @@ class ScanTest(unittest.TestCase):
         
         for item in request_methods:
             assert item in config.views[path].keys()
+            
+            view_dict_expected = expected_view_dict.copy()
+            
             view_dict = config.views[path][item].copy()
-            view_dict.pop('request_methods', None)
-            assert view_dict == expected
+            
+            print view_dict
+            print view_dict_expected
+            
+            assert view_dict == view_dict_expected
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):
@@ -128,7 +137,7 @@ class TestRequestMethods(ScanTest):
         self.request_method_test(request_method=('GET', 'POST'))
 
 class TestRequestMethodsMultipleEndpoints(ScanTest):
-    @pytest.mark.a
+    @pytest.mark.xfail
     def test_multiple_endpoints(self):
         self.api_tree = {
             'GET': self.dummy,
@@ -147,7 +156,7 @@ class TestBranch(ScanTest):
                 'GET': self.target,
                 }
             }
-        self.endpoint_test('/resource', 'GET')
+        self.endpoint_test('/resource', request_method='GET')
     
     def test_multiple_branches(self):
         self.api_tree = {
@@ -196,7 +205,7 @@ class TestViewKwargs(ScanTest):
         self.api_tree = {
             '': self.target,
             }
-        self.endpoint_test('', expected=self.target.view_kwargs)
+        self.endpoint_test('', **self.target.view_kwargs)
 
 class TestExceptions(unittest.TestCase):
     """ Confirm that appropriate errors are raised in expected situations. """

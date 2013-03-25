@@ -18,11 +18,8 @@ def get_endpoints(api_tree, root_path=''):
     for ikey, ivalue in api_tree.iteritems():
         endpoint_dict = {}
         
-        if isinstance(ikey, tuple):
-            endpoint_dict['request_methods'] = ikey
-            branch_path = ''
-        elif ikey in ALL_REQUEST_METHODS:
-            endpoint_dict['request_methods'] = (ikey, )
+        if isinstance(ikey, tuple) or ikey in ALL_REQUEST_METHODS:
+            endpoint_dict['request_method'] = ikey
             branch_path = ''
         else:
             branch_path = ikey
