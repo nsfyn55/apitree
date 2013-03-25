@@ -110,8 +110,20 @@ class TestRequestMethods(ScanTest):
     def test_no_request_method(self):
         self.request_method_test()
     
-    def test_yes_request_method(self):
+    def test_GET_method(self):
         self.request_method_test(request_method='GET')
+    
+    def test_POST_method(self):
+        self.request_method_test(request_method='POST')
+    
+    def test_PUT_method(self):
+        self.request_method_test(request_method='PUT')
+    
+    def test_DELETE_method(self):
+        self.request_method_test(request_method='DELETE')
+    
+    def test_HEAD_method(self):
+        self.request_method_test(request_method='HEAD')
     
     def test_multiple_request_methods(self):
         self.request_method_test(request_method=('GET', 'POST'))
