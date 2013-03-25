@@ -4,16 +4,6 @@ from pyramid_apitree.exc import BadAPITreeError
 
 ALL_REQUEST_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'HEAD')
 
-def get_complete_route_and_methods(root_path, route_or_methods):
-    if isinstance(route_or_methods, tuple):
-        complete_route = root_path
-        request_methods = tuple(route_or_methods)
-    elif route_or_methods in ALL_REQUEST_METHODS:
-        complete_route = root_path
-        request_methods = (route_or_methods, )
-    else:
-        raise Exception('Not yet implemented.')
-
 def get_endpoints(api_tree, root_path=''):
     """ Returns a dictionary, like this:
         {
@@ -26,14 +16,26 @@ def get_endpoints(api_tree, root_path=''):
     endpoints = {}
     
     for ikey, ivalue in api_tree.iteritems():
+        if isinstance(ikey, tuple):
+            request_methods = ikey
+            branch_path = ''
+        elif ikey in ALL_REQUEST_METHODS:
+            request_methods = (ikey, )
+            branch_path = ''
+        else:
+            raise Exception('Not yet implemented.')
         
-        complete_route = root_path + ikey
+        complete_route = root_path + branch_path
         
         if isinstance(ivalue, dict):
             endpoints.update(get_endpoints(ivalue, complete_route))
-            continue
         
-        endpoints[complete_route] = {'view': ivalue}
+        endpoint_dict = {
+            'request_method': request_methods,
+            'view': ivalue,
+            }
+        
+        endpoints[complete_route] = endpoint_dict
     
     return endpoints
 
