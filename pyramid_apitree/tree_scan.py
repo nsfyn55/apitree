@@ -41,6 +41,14 @@ def get_endpoints(api_tree, root_path=''):
                 )
         
         if isinstance(ivalue, dict):
+            if route_request_method is not None:
+                invalid_path = complete_route + '/' + str(route_request_method)
+                raise BadAPITreeError(
+                    "'Request method' branch routes ('GET', 'POST', etc.) "
+                    "cannot have a dictionary of sub-routes. Invalid path: {}"
+                    .format(invalid_path)
+                    )
+            
             endpoints.update(get_endpoints(ivalue, complete_route))
             continue
         
