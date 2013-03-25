@@ -190,18 +190,29 @@ class TestComplexBranch(ScanTest):
         self.endpoint_test('/resource/component')
 
 class TestViewKwargs(ScanTest):
-    def target(*pargs, **kwargs):
-        """ A view callable with a 'view_kwargs' attribute. The API tree scan
-            should automatically unpack the 'view_kwargs' when calling
-            'configurator.add_view()'. """
-    
-    target.view_kwargs = {'predicate': 'predicate value'}
+    def setUp(self):
+        def target(*pargs, **kwargs):
+            """ A view callable with a 'view_kwargs' attribute. The API tree
+                scan should automatically unpack the 'view_kwargs' when calling
+                'configurator.add_view()'. """
+        self.target = target
     
     def test_view_kwargs(self):
+        self.target.view_kwargs = {'predicate': 'predicate value'}
         self.api_tree = {
             '': self.target,
             }
         self.endpoint_test('', **self.target.view_kwargs)
+    
+    def test_route_request_method_overrides_view_kwargs(self):
+        """ When the API tree branch route is a request method keyword AND a
+            'request_method' value is included in the 'view_kwargs' dict, the
+            API tree should override 'view_kwargs'. """
+        self.target.view_kwargs = {'request_method': 'POST'}
+        self.api_tree = {
+            'GET': self.target,
+            }
+        self.endpoint_test('', request_method='GET')
 
 class TestExceptions(unittest.TestCase):
     """ Confirm that appropriate errors are raised in expected situations. """
@@ -214,17 +225,6 @@ class TestExceptions(unittest.TestCase):
         configurator = MockConfigurator()
         with pytest.raises(BadAPITreeError):
             scan_api_tree(configurator, api_tree)
-    
-    def test_redundant_request_method_specification_raises(self):
-        """ When a view callable specifies a 'request_method' in its
-            'view_kwargs' dictionary AND the view callable has been assigned to
-            a request-method-specific-route (i.e. '/GET'), an error should be
-            raised. """
-        self.dummy.view_kwargs = {'request_method': 'GET'}
-        api_tree = {
-            'GET': self.dummy
-            }
-        self.exception_test(api_tree)
     
     def test_request_method_route_gets_dictionary(self):
         """ When a request-method-specific-route (i.e. '/GET') is assigned a

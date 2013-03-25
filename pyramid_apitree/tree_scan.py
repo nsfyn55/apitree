@@ -24,12 +24,21 @@ def get_endpoints(api_tree, root_path=''):
         view_dict = {}
         
         if isinstance(ikey, tuple) or ikey in ALL_REQUEST_METHODS:
-            view_dict['request_method'] = ikey
+            route_request_method = ikey
             branch_path = ''
         else:
+            route_request_method = None
             branch_path = ikey
         
-        complete_route = root_path + branch_path
+        try:
+            complete_route = root_path + branch_path
+        except TypeError:
+            raise BadAPITreeError(
+                "Invalid branch route object. Must be either a string route, a "
+                "string request method ('GET', 'POST', etc.), or a tuple of "
+                "string request methods. Got: {}"
+                .format(type(branch_path).__name__)
+                )
         
         if isinstance(ivalue, dict):
             endpoints.update(get_endpoints(ivalue, complete_route))
@@ -38,8 +47,13 @@ def get_endpoints(api_tree, root_path=''):
         view_callable = ivalue
         view_dict['view'] = view_callable
         
-        if hasattr(view_callable, 'view_kwargs'):
-            view_dict.update(view_callable.view_kwargs)
+        view_kwargs = getattr(view_callable, 'view_kwargs', dict())
+        view_dict.update(view_kwargs)
+        
+        # Request method from API tree overrides request method provided by
+        # view callable 'view_kwargs'.
+        if route_request_method is not None:
+            view_dict['request_method'] = route_request_method
         
         view_dicts_list = endpoints.setdefault(complete_route, list())
         view_dicts_list.append(view_dict)
