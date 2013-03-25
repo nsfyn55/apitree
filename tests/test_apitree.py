@@ -58,8 +58,10 @@ class MockConfigurator(object):
         view_dict = kwargs
         view_dict['view_callable'] = view
         
+        config_view = self.views.setdefault(route_name, dict())
+        
         for item in request_methods:
-            self.views[route_name][item] = view_dict
+            config_view[item] = view_dict
     
     def add_route(self, name, pattern):
         assert name == pattern
@@ -192,8 +194,9 @@ class TestExceptions(unittest.TestCase):
         self.dummy = dummy
     
     def exception_test(self, api_tree):
+        configurator = MockConfigurator()
         with pytest.raises(BadAPITreeError):
-            scan_api_tree(api_tree)
+            scan_api_tree(configurator, api_tree)
     
     def test_redundant_request_method_specification_raises(self):
         """ When a view callable specifies a 'request_method' in its
