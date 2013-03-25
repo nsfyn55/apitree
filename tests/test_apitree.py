@@ -4,6 +4,7 @@ import pytest
 from pyramid_apitree import (
     scan_api_tree,
     )
+from pyramid_apitree.exc import BadAPITreeError
 
 """ An example API tree.
     
@@ -182,6 +183,42 @@ class TestViewKwargs(ScanTest):
             '': self.target,
             }
         self.endpoint_test('', expected=self.target.view_kwargs)
+
+class TestExceptions(unittest.TestCase):
+    """ Confirm that appropriate errors are raised in expected situations. """
+    def setUp(self):
+        def dummy(*pargs, **kwargs):
+            """ A dummy view callable. """
+        self.dummy = dummy
+    
+    def exception_test(self, api_tree):
+        with pytest.raises(BadAPITreeError):
+            scan_api_tree(api_tree)
+    
+    def test_redundant_request_method_specification_raises(self):
+        """ When a view callable specifies a 'request_method' in its
+            'view_kwargs' dictionary AND the view callable has been assigned to
+            a request-method-specific-route (i.e. '/GET'), an error should be
+            raised. """
+        self.dummy.view_kwargs = {'request_method': 'GET'}
+        api_tree = {
+            'GET': self.dummy
+            }
+        self.exception_test(api_tree)
+    
+    def test_request_method_route_gets_dictionary(self):
+        """ When a request-method-specific-route (i.e. '/GET') is assigned a
+            dictionary value in the API tree, an error should be raised.
+            
+            This is because it is impossible to build upon a request-method-
+            specific route; the request method does not form a part of the URL.
+            """
+        api_tree = {
+            'GET': {
+                '/xxx': self.dummy
+                }
+            }
+        self.exception_test(api_tree)
     
     
 
