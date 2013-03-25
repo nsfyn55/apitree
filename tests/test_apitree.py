@@ -99,17 +99,15 @@ class ScanTest(unittest.TestCase):
         
         for item in request_methods:
             assert item in config.views[path].keys()
-            view_dict = config.views[path][item]
+            view_dict = config.views[path][item].copy()
+            view_dict.pop('request_methods', None)
             assert view_dict == expected
 
 class TestRequestMethods(ScanTest):
-    def request_method_test(self, request_method=None):
+    def request_method_test(self, request_method):
         self.api_tree = {request_method: self.target}
         # Use an empty string ('') for root.
         self.endpoint_test(path='', request_method=request_method)
-    
-    def test_no_request_method(self):
-        self.request_method_test()
     
     def test_GET_method(self):
         self.request_method_test(request_method='GET')
@@ -139,11 +137,11 @@ class TestRequestMethodsMultipleEndpoints(ScanTest):
         self.endpoint_test(path='', request_method='POST')
 
 class TestBranch(ScanTest):
-    def test_branch(self):
+    def test_branch_no_request_method(self):
         self.api_tree = {'/resource': self.target}
         self.endpoint_test('/resource')
     
-    def test_branch_request_method(self):
+    def test_branch_yes_request_method(self):
         self.api_tree = {
             '/resource': {
                 'GET': self.target,

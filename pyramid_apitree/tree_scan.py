@@ -16,24 +16,24 @@ def get_endpoints(api_tree, root_path=''):
     endpoints = {}
     
     for ikey, ivalue in api_tree.iteritems():
+        endpoint_dict = {}
+        
         if isinstance(ikey, tuple):
-            request_methods = ikey
+            endpoint_dict['request_methods'] = ikey
             branch_path = ''
         elif ikey in ALL_REQUEST_METHODS:
-            request_methods = (ikey, )
+            endpoint_dict['request_methods'] = (ikey, )
             branch_path = ''
         else:
-            raise Exception('Not yet implemented.')
+            branch_path = ikey
         
         complete_route = root_path + branch_path
         
         if isinstance(ivalue, dict):
             endpoints.update(get_endpoints(ivalue, complete_route))
+            continue
         
-        endpoint_dict = {
-            'request_method': request_methods,
-            'view': ivalue,
-            }
+        endpoint_dict['view'] = ivalue
         
         endpoints[complete_route] = endpoint_dict
     
