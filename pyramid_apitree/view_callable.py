@@ -1,22 +1,26 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
 class BaseViewCallable(object):
-    pass
+    def __init__(self, *pargs, **kwargs):
+        if pargs:
+            self.set_wrapped(pargs[0])
+        
+        self.view_kwargs = kwargs
+    
+    def __call__(self, obj):
+        if not hasattr(self, 'wrapped'):
+            self.set_wrapped(obj)
+            return self
+        
+        self.view_call(obj)
+    
+    def set_wrapped(self, wrapped):
+        if not callable(wrapped):
+            raise TypeError('Wrapped object must be callable.')
+        self.wrapped = wrapped
 
 class SimpleViewCallable(BaseViewCallable):
     pass
 
-def simple_view(*pargs, **kwargs):
-    if pargs:
-        wrapped = pargs[0]
-        wrapped.view_kwargs = {}
-        return wrapped
-    
-    def inner_decorator(wrapped):
-        wrapped.view_kwargs = kwargs
-        return wrapped
-    
-    return inner_decorator
-
-class FunctionViewCallable(BaseViewCallable):
+class FunctionViewCallable(SimpleViewCallable):
     pass

@@ -9,13 +9,10 @@ from pyramid_apitree import (
     )
 from pyramid_apitree.view_callable import BaseViewCallable
 
-pytestmark = pytest.mark.a
-
 class TestBaseViewCallable(unittest.TestCase):
     """ A 'BaseViewCallable' view should have a 'view_kwargs' attribute, which
         is a dictionary of any keyword arguments provided to the decorator. """
     
-    @pytest.mark.b
     def test_no_kwargs(self):
         @BaseViewCallable
         def view_callable(request):
@@ -33,13 +30,13 @@ class TestBaseViewCallable(unittest.TestCase):
         assert hasattr(view_callable, 'view_kwargs')
         assert view_callable.view_kwargs == {'predicate': PREDICATE_VALUE}
     
-    @pytest.mark.c
     def test_wrapped_not_callable_raises(self):
         """ If wrapped function is not callable, an error is raised. """
         not_callable = object()
         with pytest.raises(TypeError):
             BaseViewCallable(not_callable)
 
+@pytest.mark.a
 class TestSimpleViewCallable(unittest.TestCase):
     """ A 'simple_view' view callable should have a 'view_kwargs' attribute,
         which is a dictionary of any keyword arguments provided to the
