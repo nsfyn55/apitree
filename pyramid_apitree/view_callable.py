@@ -12,7 +12,7 @@ class BaseViewCallable(object):
             self.set_wrapped(obj)
             return self
         
-        self.view_call(obj)
+        return self.view_call(obj)
     
     def set_wrapped(self, wrapped):
         if not callable(wrapped):
