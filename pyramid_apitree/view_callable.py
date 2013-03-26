@@ -20,7 +20,8 @@ class BaseViewCallable(object):
         self.wrapped = wrapped
 
 class SimpleViewCallable(BaseViewCallable):
-    pass
+    def view_call(self, request):
+        return self.wrapped(request)
 
 class FunctionViewCallable(SimpleViewCallable):
     pass

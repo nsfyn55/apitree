@@ -61,6 +61,7 @@ class TestSimpleViewCallable(unittest.TestCase):
         
         assert isinstance(view_callable, BaseViewCallable)
     
+    @pytest.mark.b
     def test_no_kwargs_call(self):
         """ Request value passed to callable unchanged. """
         @simple_view
