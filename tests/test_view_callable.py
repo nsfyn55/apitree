@@ -69,10 +69,10 @@ class BasicBehaviorTest(object):
         """ Return value should be returned unchanged. """
         expected = object()
         @self.view_decorator
-        def view_callable(request):
+        def view_callable(*pargs, **kwargs):
             return expected
         
-        result = view_callable(None)
+        result = view_callable(MockPyramidRequest())
         
         assert result is expected
 
@@ -139,14 +139,12 @@ class MockPyramidRequest(object):
         else:
             self.json_body = json_body
 
-@pytest.mark.b
 class TestFunctionViewCallableBasicBehavior(
     unittest.TestCase,
     BasicBehaviorTest,
     ):
     view_decorator = function_view
 
-@pytest.mark.a
 class TestFunctionViewCallable(unittest.TestCase):
     """ A 'function_view' view callable gets function keyword arguments from the
         'request' object. """
@@ -161,7 +159,6 @@ class TestFunctionViewCallable(unittest.TestCase):
         
         assert isinstance(view_callable, SimpleViewCallable)
 
-@pytest.mark.a
 class TestFunctionViewCallableRequestMethods(unittest.TestCase):
     def request_method_test(
         self,
@@ -215,7 +212,8 @@ class TestFunctionViewCallableRequestMethods(unittest.TestCase):
             headers={'content-type': 'xxx'},
             expected_kwargs={}
             )
-    
+
+class TestFunctionViewCallableRequestMethodsPrecedence(unittest.TestCase):
     def override_test(self, *request_methods):
         request_kwargs = {
             request_methods[i]: {'a': i}
@@ -259,7 +257,6 @@ class TestFunctionViewCallableRequestMethods(unittest.TestCase):
     def test_URL_overrides_GET_and_JSON(self):
         self.override_test('matchdict', 'GET', 'json_body')
 
-@pytest.mark.a
 class TestFunctionViewCallableDirectCall(unittest.TestCase):
     """ FunctionViewCallable provides a '_call' method to call the wrapped
         callable directly. This is mostly used for testing. """
@@ -267,7 +264,7 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
     def make_view_callable(self):
         @function_view
         def view_callable(a=1):
-            pass
+            raise WrappedCallableWasCalledError
         return view_callable
     
     def test_call_unknown_kwargs_raises(self):
@@ -280,7 +277,8 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
     def test_call_direct_passes(self):
         """ Calling the '_call' method with a known keyword argument passes. """
         view_callable = self.make_view_callable()
-        view_callable._call(a=1)
+        with pytest.raises(WrappedCallableWasCalledError):
+            view_callable._call(a=1)
     
     def test_call_direct_unknown_kwarg_raises(self):
         """ Calling the '_call' method with an unknown keyword argument
@@ -288,6 +286,13 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
         view_callable = self.make_view_callable()
         with pytest.raises(TypeError):
             view_callable._call(b=2)
+    
+    def test_call_direct_positional_args_raises(self):
+        """ Calling the '_call' method with positional arguments raises an
+            error. """
+        view_callable = self.make_view_callable()
+        with pytest.raises(TypeError):
+            view_callable._call(1)
 
 
 

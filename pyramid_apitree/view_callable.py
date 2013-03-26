@@ -24,4 +24,34 @@ class SimpleViewCallable(BaseViewCallable):
         return self.wrapped(request)
 
 class FunctionViewCallable(SimpleViewCallable):
-    pass
+    def view_call(self, request):
+        self.request = request
+        
+        kwargs_url = dict(request.matchdict)
+        kwargs_get = dict(request.GET)
+        
+        content_type = request.headers.get('content-type', '').lower()
+        
+        if content_type == 'application/json':
+            kwargs_body = request.json_body
+        else:
+            kwargs_body = request.POST
+        
+        kwargs_dict = {}
+        
+        # Listed in reverse-precedence order (last has highest precedence).
+        kwargs_sources = [kwargs_body, kwargs_get, kwargs_url]
+        
+        for item in kwargs_sources:
+            kwargs_dict.update(item)
+        
+        return self._call(**kwargs_dict)
+    
+    def _call(self, *pargs, **kwargs):
+        if pargs:
+            raise TypeError(
+                "When using the '_call' method, you must provide all arguments "
+                "as keyword arguments."
+            )
+        
+        return self.wrapped(**kwargs)
