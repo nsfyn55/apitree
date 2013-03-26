@@ -1,3 +1,11 @@
+""" Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+
+class BaseViewCallable(object):
+    pass
+
+class SimpleViewCallable(BaseViewCallable):
+    pass
+
 def simple_view(*pargs, **kwargs):
     if pargs:
         wrapped = pargs[0]
@@ -9,3 +17,6 @@ def simple_view(*pargs, **kwargs):
         return wrapped
     
     return inner_decorator
+
+class FunctionViewCallable(BaseViewCallable):
+    pass
