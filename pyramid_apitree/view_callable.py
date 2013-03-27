@@ -23,7 +23,7 @@ class SimpleViewCallable(BaseViewCallable):
     def view_call(self, request):
         return self.wrapped(request)
 
-class FunctionViewCallable(SimpleViewCallable):
+class FunctionViewCallable(BaseViewCallable):
     def view_call(self, request):
         self.request = request
         
@@ -55,3 +55,10 @@ class FunctionViewCallable(SimpleViewCallable):
             )
         
         return self.wrapped(**kwargs)
+
+
+
+
+
+
+

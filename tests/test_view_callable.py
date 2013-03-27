@@ -149,15 +149,15 @@ class TestFunctionViewCallable(unittest.TestCase):
     """ A 'function_view' view callable gets function keyword arguments from the
         'request' object. """
     
-    def test_subclass_of_SimpleViewCallable(self):
-        assert issubclass(function_view, SimpleViewCallable)
+    def test_subclass_of_BaseViewCallable(self):
+        assert issubclass(function_view, BaseViewCallable)
     
-    def test_instance_of_SimpleViewCallable(self):
+    def test_instance_of_BaseViewCallable(self):
         @function_view
         def view_callable(**kwargs):
             pass
         
-        assert isinstance(view_callable, SimpleViewCallable)
+        assert isinstance(view_callable, BaseViewCallable)
 
 class TestFunctionViewCallableRequestMethods(unittest.TestCase):
     def request_method_test(
