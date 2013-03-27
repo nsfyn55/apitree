@@ -2,6 +2,7 @@
 
 import unittest
 import pytest
+import ioprocess
 
 from pyramid_apitree import (
     simple_view,
@@ -17,7 +18,7 @@ from pyramid_apitree.view_callable import (
 class Error(Exception):
     """ Base class for errors. """
 
-class WrappedCallableWasCalledError(Error):
+class WrappedCallableSuccessError(Error):
     """ Raised to confirm that the wrapped function was actually called by a
         view callable instance.
         
@@ -28,13 +29,27 @@ class TestBaseViewCallable(unittest.TestCase):
     """ A 'BaseViewCallable' view should have a 'view_kwargs' attribute, which
         is a dictionary of any keyword arguments provided to the decorator. """
     
+    def view_kwargs_test(self, view_callable, expected_view_kwargs):
+        assert hasattr(view_callable, 'view_kwargs')
+        assert view_callable.view_kwargs == expected_view_kwargs
+    
     def test_no_kwargs(self):
         @BaseViewCallable
         def view_callable(request):
             pass
         
-        assert hasattr(view_callable, 'view_kwargs')
-        assert view_callable.view_kwargs == {}
+        self.view_kwargs_test(view_callable, {})
+        #assert hasattr(view_callable, 'view_kwargs')
+        #assert view_callable.view_kwargs == {}
+    
+    def test_empty_kwargs(self):
+        @BaseViewCallable()
+        def view_callable(request):
+            pass
+        
+        self.view_kwargs_test(view_callable, {})
+        #assert hasattr(view_callable, 'view_kwargs')
+        #assert view_callable.view_kwargs == {}
     
     def test_yes_kwargs(self):
         PREDICATE_VALUE = object()
@@ -42,8 +57,9 @@ class TestBaseViewCallable(unittest.TestCase):
         def view_callable(request):
             pass
         
-        assert hasattr(view_callable, 'view_kwargs')
-        assert view_callable.view_kwargs == {'predicate': PREDICATE_VALUE}
+        self.view_kwargs_test(view_callable, {'predicate': PREDICATE_VALUE})
+        #assert hasattr(view_callable, 'view_kwargs')
+        #assert view_callable.view_kwargs == {'predicate': PREDICATE_VALUE}
     
     def test_wrapped_not_callable_raises(self):
         """ If wrapped function is not callable, an error is raised. """
@@ -52,8 +68,7 @@ class TestBaseViewCallable(unittest.TestCase):
             BaseViewCallable(not_callable)
 
 class BasicBehaviorTest(object):
-    """ For SimpleViewCallable and FunctionViewCallable, confirm some common
-        behaviors. """
+    """ For all view callable classes, confirm some common behaviors. """
     
     def test_decorator_accepts_keyword_arguments(self):
         expected_view_kwargs = {'predicate': 'xxx'}
@@ -89,11 +104,11 @@ class TestSimpleViewCallable(unittest.TestCase):
         decorator. """
     REQUEST_OBJ = object()
     
-    def test_subclass_of_ViewCallable(self):
+    def test_subclass_of_BaseViewCallable(self):
         """ Confirm that 'simple_view' is a subclass of BaseViewCallable. """
         assert issubclass(simple_view, BaseViewCallable)
     
-    def test_instance_of_ViewCallable(self):
+    def test_instance_of_BaseViewCallable(self):
         """ Confirm that 'simple_view' returns an instance of
             BaseViewCallable. """
         @simple_view
@@ -174,14 +189,14 @@ class TestFunctionViewCallableRequestMethods(unittest.TestCase):
         @function_view
         def view_callable(**kwargs):
             assert kwargs == expected_kwargs
-            raise WrappedCallableWasCalledError
+            raise WrappedCallableSuccessError
         
         request_kwargs = kwargs
         request_kwargs.update({request_method: method_kwargs})
         
         request = MockPyramidRequest(**request_kwargs)
         
-        with pytest.raises(WrappedCallableWasCalledError):
+        with pytest.raises(WrappedCallableSuccessError):
             view_callable(request)
     
     def test_URL_kwargs(self):
@@ -232,9 +247,9 @@ class TestFunctionViewCallableRequestMethodsPrecedence(unittest.TestCase):
         @function_view
         def view_callable(a):
             assert a == expected_value
-            raise WrappedCallableWasCalledError
+            raise WrappedCallableSuccessError
         
-        with pytest.raises(WrappedCallableWasCalledError):
+        with pytest.raises(WrappedCallableSuccessError):
             view_callable(request)
     
     def test_URL_overrides_GET(self):
@@ -265,7 +280,7 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
     def make_view_callable(self):
         @function_view
         def view_callable(a=1):
-            raise WrappedCallableWasCalledError
+            raise WrappedCallableSuccessError
         return view_callable
     
     def test_call_unknown_kwargs_raises(self):
@@ -278,7 +293,7 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
     def test_call_direct_passes(self):
         """ Calling the '_call' method with a known keyword argument passes. """
         view_callable = self.make_view_callable()
-        with pytest.raises(WrappedCallableWasCalledError):
+        with pytest.raises(WrappedCallableSuccessError):
             view_callable._call(a=1)
     
     def test_call_direct_unknown_kwarg_raises(self):
@@ -294,6 +309,175 @@ class TestFunctionViewCallableDirectCall(unittest.TestCase):
         view_callable = self.make_view_callable()
         with pytest.raises(TypeError):
             view_callable._call(1)
+
+class TestAPIViewCallableBasicBehavior(
+    unittest.TestCase,
+    BasicBehaviorTest,
+    ):
+    view_decorator = api_view
+
+@pytest.mark.a
+class TestAPIViewCallableIOProcessInput(unittest.TestCase):
+    """ Confirm that 'IOProcessor.process' is being called to process input
+        values.
+        
+        Confirm that keyword arguments for 'IOProcessor.process' can be passed
+        through the decorator.
+        
+        Confirm that parameters specifed in the wrapped callable definition and
+        parameters specified in the decorator interact with each other in the
+        correct way.
+        
+        Confirm that the 'unlimited' decorator argument behaves in the expected
+        way. """
+    
+    def call_passes_test(self, view_callable, **kwargs):
+        with pytest.raises(WrappedCallableSuccessError):
+            view_callable._call(**kwargs)
+    
+    def call_raises_test(self, view_callable, **kwargs):
+        with pytest.raises(ioprocess.IOProcessFailureError):
+            view_callable._call(**kwargs)
+    
+    def test_no_kwargs_passes(self):
+        @api_view
+        def view_callable():
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable)
+    
+    def test_unknown_kwarg_raises(self):
+        @api_view
+        def view_callable():
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
+    
+    def test_definition_required_present_passes(self):
+        @api_view
+        def view_callable(a):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None)
+    
+    def test_definition_required_missing_raises(self):
+        @api_view
+        def view_callable(a):
+            pass
+        
+        self.call_raises_test(view_callable)
+    
+    def test_definition_optional_present_passes(self):
+        @api_view
+        def view_callable(a=None):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None)
+    
+    def test_definition_optional_missing_passes(self):
+        @api_view
+        def view_callable(a=None):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable)
+    
+    def test_decorator_required_present_passes(self):
+        @api_view(required={'a': object})
+        def view_callable(**kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None)
+    
+    def test_decorator_required_missing_raises(self):
+        @api_view(required={'a': object})
+        def view_callable(**kwargs):
+            pass
+        
+        self.call_raises_test(view_callable)
+    
+    def test_decorator_optional_present_passes(self):
+        @api_view(optional={'a': object})
+        def view_callable(**kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None)
+    
+    def test_decorator_optional_missing_passes(self):
+        @api_view(optional={'a': object})
+        def view_callable(**kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable)
+    
+    def test_decorator_optional_not_in_definition_raises(self):
+        @api_view(optional={'a': object})
+        def view_callable():
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
+    
+    def test_decorator_required_not_in_definition_raises(self):
+        @api_view(required={'a': object})
+        def view_callable():
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
+    
+    def test_decorator_required_overrides_definition_optional(self):
+        @api_view(required={'a': object})
+        def view_callable(a=None):
+            pass
+        
+        self.call_raises_test(view_callable)
+    
+    def test_decorator_optional_overrides_definition_required(self):
+        @api_view(optional={'a': object})
+        def view_callable(a):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable)
+    
+    def test_decorator_required_compliments_definition_required(self):
+        @api_view(required={'b': object})
+        def view_callable(a, **kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None, b=None)
+    
+    def test_decorator_optional_compliments_definition_optional(self):
+        @api_view(optional={'b': object})
+        def view_callable(a=None, **kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None, b=None)
+    
+    def test_definition_kwargs_not_unlimited(self):
+        """ When the view callable definition specifies a '**kwargs' parameter
+            and the 'unlimited' directive is not used, unknown keyword arguments
+            fail. """
+        @api_view
+        def view_callable(**kwargs):
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
+    
+    def test_decorator_unlimited_passes_with_definition_kwargs(self):
+        """ When 'unlimited=True' AND the view callable definition specifies a
+            '**kwargs' parameter, unknown keyword arguments pass. """
+        @api_view(unlimited=True)
+        def view_callable(**kwargs):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=None)
+    
+    def test_decorator_unlimited_raises_without_definition_kwargs(self):
+        """ When 'unlimited=True' but the view callable definition does not
+            specify a '**kwargs' parameter, unknown keyword argumets fail. """
+        @api_view(unlimited=True)
+        def view_callable():
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
 
 
 
