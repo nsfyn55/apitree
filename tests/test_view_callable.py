@@ -6,6 +6,7 @@ import pytest
 from pyramid_apitree import (
     simple_view,
     function_view,
+    api_view,
     )
 from pyramid_apitree.view_callable import (
     BaseViewCallable,

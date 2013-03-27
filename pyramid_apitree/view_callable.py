@@ -56,6 +56,9 @@ class FunctionViewCallable(BaseViewCallable):
         
         return self.wrapped(**kwargs)
 
+class APIViewCallable(FunctionViewCallable):
+    pass
+
 
 
 
