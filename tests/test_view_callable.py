@@ -13,6 +13,7 @@ from pyramid_apitree.view_callable import (
     BaseViewCallable,
     SimpleViewCallable,
     FunctionViewCallable,
+    APIViewCallable,
     )
 
 class Error(Exception):
@@ -315,8 +316,29 @@ class TestAPIViewCallableBasicBehavior(
     BasicBehaviorTest,
     ):
     view_decorator = api_view
+    
+    def test_ioprocess_kwargs_collected(self):
+        """ Confirm that the special keyword arguments input/output processing
+            are not included in the 'view_kwargs' dictionary. """
+        ioprocess_kwargs = dict(
+            required=object(),
+            optional=object(),
+            unlimited=object(),
+            returns=object(),
+            )
+        view_kwargs = dict(
+            predicate=object()
+            )
+        decorator_kwargs = ioprocess_kwargs.copy()
+        decorator_kwargs.update(view_kwargs)
+        
+        @api_view(**decorator_kwargs)
+        def view_callable():
+            pass
+        
+        assert view_callable.view_kwargs == view_kwargs
 
-@pytest.mark.a
+@pytest.mark.c
 class TestAPIViewCallableIOProcessInput(unittest.TestCase):
     """ Confirm that 'IOProcessor.process' is being called to process input
         values.
@@ -478,6 +500,86 @@ class TestAPIViewCallableIOProcessInput(unittest.TestCase):
             pass
         
         self.call_raises_test(view_callable, a=None)
+
+@pytest.mark.b
+class TestAPIViewCallableIOProcessOutput(unittest.TestCase):
+    """ Confirm that 'IOProcessor.process' is being called for view callable
+        output.
+        
+        All 'output' values are considered to be 'required': output checking is
+        strict. """
+    
+    def test_item_present_passes(self):
+        @api_view(returns={'a': object})
+        def view_callable():
+            return {'a': None}
+        
+        result = view_callable._call
+
+class CustomInputType(object):
+    """ A custom type for testing coercion. """
+
+class CustomCoercedType(object):
+    """ A custom type for testingcoercion. """
+
+class CustomOutputType(object):
+    """ A custom type for testing output coercion. """
+
+@pytest.mark.a
+class TestAPIViewCallableCoercion(unittest.TestCase):
+    class CustomAPIViewCallable(APIViewCallable):
+        """ A view callable that coerces input and output value types. """
+        @property
+        def input_coercion_functions(self):
+            def coerce_custom_input(value):
+                if isinstance(value, CustomInputType):
+                    return CustomCoercedType()
+                raise ioprocess.CoercionFailureError
+            return {CustomCoercedType: coerce_custom_input}
+        
+        @property
+        def output_coercion_functions(self):
+            def coerce_custom_output(value):
+                if isinstance(value, CustomCoercedType):
+                    return CustomOutputType()
+                raise ioprocess.CoercionFailureError
+            return {CustomCoercedType: coerce_custom_output}
+    
+    def test_input_coercion(self):
+        """ 'wrapped_call' coerces input. """
+        @self.CustomAPIViewCallable(
+            required={'a': CustomCoercedType}
+            )
+        def view_callable(a):
+            assert isinstance(a, CustomCoercedType)
+            raise WrappedCallableSuccessError
+        
+        with pytest.raises(WrappedCallableSuccessError):
+            view_callable.wrapped_call(a=CustomInputType())
+    
+    def test_output_coercion(self):
+        """ 'wrapped_call' coerces output. """
+        @self.CustomAPIViewCallable(
+            returns=CustomCoercedType
+            )
+        def view_callable():
+            return CustomCoercedType()
+        
+        result = view_callable.wrapped_call()
+        assert isinstance(result, CustomOutputType)
+    
+    def test_input_coercion_only_for_special_call(self):
+        """ '_call' coerces input, but not output. """
+        @self.CustomAPIViewCallable(
+            required={'a': CustomCoercedType},
+            returns=CustomCoercedType,
+            )
+        def view_callable(a):
+            assert isinstance(a, CustomCoercedType)
+            return a
+        
+        result = view_callable._call(a=CustomInputType())
+        assert isinstance(result, CustomCoercedType)
 
 
 
