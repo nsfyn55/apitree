@@ -5,7 +5,7 @@ class BaseViewCallable(object):
         if pargs:
             self.set_wrapped(pargs[0])
         
-        self.view_kwargs = kwargs
+        self.stash_kwargs(kwargs)
     
     def __call__(self, obj):
         if not hasattr(self, 'wrapped'):
@@ -13,6 +13,9 @@ class BaseViewCallable(object):
             return self
         
         return self.view_call(obj)
+    
+    def stash_kwargs(self, kwargs_dict):
+        self.view_kwargs = kwargs_dict
     
     def set_wrapped(self, wrapped):
         if not callable(wrapped):
@@ -65,7 +68,41 @@ class FunctionViewCallable(BaseViewCallable):
         return self.wrapped(**kwargs)
 
 class APIViewCallable(FunctionViewCallable):
-    pass
+    def get_items_from_dict(self, dict_obj, keys, result_keys=None):
+        if result_keys is None:
+            result_keys = list(keys)
+        result = {}
+        for ikey, result_key in zip(keys, result_keys):
+            try:
+                result[result_key] = dict_obj[ikey]
+            except KeyError:
+                continue
+        return result
+    
+    def stash_kwargs(self, kwargs_dict):
+        """ Stash kwargs dicts for input/output processing. """
+        self.verify_input_kwargs = self.get_items_from_dict(
+            kwargs_dict,
+            ['required', 'optional', 'unlimited'],
+            )
+        
+        self.coerce_input_kwargs = self.get_items_from_dict(
+            kwargs_dict,
+            ['required', 'optional'],
+            )
+        
+        self.process_output_kwargs = self.get_items_from_dict(
+            kwargs_dict,
+            ['returns'],
+            ['required']
+            )
+        
+        remaining_kwargs = {
+            ikey: ivalue for ikey, ivalue in kwargs_dict.iteritems()
+            if ikey not in ['required', 'optional', 'unlimited', 'returns']
+            }
+        
+        super(APIViewCallable, self).stash_kwargs(remaining_kwargs)
 
 
 
