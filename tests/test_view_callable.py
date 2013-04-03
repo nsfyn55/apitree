@@ -175,7 +175,7 @@ class TestFunctionViewCallable(unittest.TestCase):
         
         assert isinstance(view_callable, BaseViewCallable)
 
-class TestFunctionViewCallableRequestMethods(unittest.TestCase):
+class TestFunctionViewCallableKwargsSources(unittest.TestCase):
     def request_method_test(
         self,
         request_method,
@@ -228,21 +228,41 @@ class TestFunctionViewCallableRequestMethods(unittest.TestCase):
             headers={'content-type': 'xxx'},
             expected_kwargs={}
             )
+    
+    @pytest.mark.e
+    def test_special_kwargs(self):
+        """ The 'special_kwargs' method injects keyword arguments before calling
+            the wrapped callable. """
+        expected_kwargs = {'a': object()}
+        method_kwargs = expected_kwargs.copy()
+        
+        class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
+            def special_kwargs(self, request):
+                return method_kwargs
+        
+        @SpecialKwargsFunctionViewCallable
+        def view_callable(**kwargs):
+            assert kwargs == expected_kwargs
+            raise WrappedCallableSuccessError
+        
+        request = MockPyramidRequest()
+        with pytest.raises(WrappedCallableSuccessError):
+            view_callable(request)
 
-class TestFunctionViewCallableRequestMethodsPrecedence(unittest.TestCase):
-    def override_test(self, *request_methods):
-        request_kwargs = {
-            request_methods[i]: {'a': i}
-            for i in range(len(request_methods))
-            }
+class TestFunctionViewCallableKwargsSourcesPrecedence(unittest.TestCase):
+    def make_request(self, *request_methods):
+        request_kwargs = {item: {'a': object()} for item in request_methods}
         
         if 'json_body' in request_kwargs:
             request_kwargs['headers'] = {'content_type': 'application/json'}
         
-        # First-listed request method is expected to override the others.
-        expected_value = request_kwargs[request_methods[0]]['a']
+        return MockPyramidRequest(**request_kwargs)
+    
+    def override_test(self, *request_methods):
+        request = self.make_request(*request_methods)
         
-        request = MockPyramidRequest(**request_kwargs)
+        # First-listed request method is expected to override the others.
+        expected_value = getattr(request, request_methods[0])['a']
         
         @function_view
         def view_callable(a):
@@ -272,6 +292,33 @@ class TestFunctionViewCallableRequestMethodsPrecedence(unittest.TestCase):
     
     def test_URL_overrides_GET_and_JSON(self):
         self.override_test('matchdict', 'GET', 'json_body')
+    
+    def special_kwargs_overrides_all_others_test(self, request_body_source):
+        """ Keyword arguments from the 'special_kwargs' method override all
+            other kwarg sources. """
+        expected_value = object()
+        
+        class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
+            def special_kwargs(self, request):
+                return {'a': expected_value}
+        
+        request = self.make_request('matchdict', 'GET', request_body_source)
+        
+        @SpecialKwargsFunctionViewCallable
+        def view_callable(a):
+            assert a == expected_value
+            raise WrappedCallableSuccessError
+        
+        with pytest.raises(WrappedCallableSuccessError):
+            view_callable(request)
+    
+    @pytest.mark.e
+    def test_special_kwargs_overrides_all_with_json_body(self):
+        self.special_kwargs_overrides_all_others_test('json_body')
+    
+    @pytest.mark.e
+    def test_special_kwargs_overrides_all_with_POST(self):
+        self.special_kwargs_overrides_all_others_test('POST')
 
 class TestFunctionViewCallableDirectCall(unittest.TestCase):
     """ FunctionViewCallable provides a '_call' method to call the wrapped
