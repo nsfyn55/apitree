@@ -38,14 +38,22 @@ class FunctionViewCallable(BaseViewCallable):
             kwargs_body = request.POST
         
         kwargs_dict = {}
+        special_kwargs = self.special_kwargs(request)
         
         # Listed in reverse-precedence order (last has highest precedence).
-        kwargs_sources = [kwargs_body, kwargs_get, kwargs_url]
+        kwargs_sources = [kwargs_body, kwargs_get, kwargs_url, special_kwargs]
         
         for item in kwargs_sources:
             kwargs_dict.update(item)
         
-        return self._call(**kwargs_dict)
+        #return self._call(**kwargs_dict)
+        return self.wrapped_call(**kwargs_dict)
+    
+    def special_kwargs(self, request):
+        return {}
+    
+    def wrapped_call(self, **kwargs):
+        return self._call(**kwargs)
     
     def _call(self, *pargs, **kwargs):
         if pargs:

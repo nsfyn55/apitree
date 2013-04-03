@@ -229,7 +229,6 @@ class TestFunctionViewCallableKwargsSources(unittest.TestCase):
             expected_kwargs={}
             )
     
-    @pytest.mark.e
     def test_special_kwargs(self):
         """ The 'special_kwargs' method injects keyword arguments before calling
             the wrapped callable. """
@@ -312,11 +311,9 @@ class TestFunctionViewCallableKwargsSourcesPrecedence(unittest.TestCase):
         with pytest.raises(WrappedCallableSuccessError):
             view_callable(request)
     
-    @pytest.mark.e
     def test_special_kwargs_overrides_all_with_json_body(self):
         self.special_kwargs_overrides_all_others_test('json_body')
     
-    @pytest.mark.e
     def test_special_kwargs_overrides_all_with_POST(self):
         self.special_kwargs_overrides_all_others_test('POST')
 
@@ -363,7 +360,7 @@ class TestAPIViewCallableBasicBehavior(
     ):
     view_decorator = api_view
     
-    @pytest.mark.a
+    @pytest.mark.f
     def test_iomanager_kwargs_collected(self):
         """ Confirm that the special keyword arguments for verification and
             coercion (using 'iomanager') are not included in the 'view_kwargs'
@@ -443,6 +440,7 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_passes_test(view_callable)
     
+    @pytest.mark.e
     def test_unknown_kwarg_raises(self):
         @api_view
         def view_callable():
@@ -532,12 +530,12 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_raises_test(view_callable)
     
-    def test_decorator_optional_overrides_definition_required(self):
+    def test_decorator_mismatch_optional_definition_required(self):
         @api_view(optional={'a': object})
         def view_callable(a):
             raise WrappedCallableSuccessError
         
-        self.call_passes_test(view_callable)
+        self.call_raises_error_test(view_callable, TypeError)
     
     def test_decorator_required_compliments_definition_required(self):
         @api_view(required={'b': object})
@@ -562,14 +560,17 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_passes_test(view_callable, a=None)
     
-    def test_decorator_unlimited_raises_without_definition_kwargs(self):
+    def test_decorator_mismatch_unlimited_raises_without_definition_kwargs(
+        self
+        ):
         """ When 'unlimited=True' but the view callable definition does not
             specify a '**kwargs' parameter, unknown keyword argumets fail. """
         @api_view(unlimited=True)
         def view_callable():
             pass
         
-        self.call_raises_test(view_callable, a=None)
+        
+        self.call_raises_error_test(view_callable, TypeError, a=None)
 
 @pytest.mark.d
 class TestAPIViewCallableVerifyStructureInput_call(
@@ -620,18 +621,18 @@ class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
             container types the same way. """
         self.return_test({'a': object}, return_value)
     
-    def dict_raises_test(self, return_value):
+    def container_raises_test(self, return_value):
         with pytest.raises(iomanager.VerificationFailureError):
-            self.dict_test(return_value)
+            self.container_test(return_value)
     
     def test_dict_expected_passes(self):
-        self.dict_test({'a': object()})
+        self.container_test({'a': object()})
     
     def test_dict_missing_raises(self):
-        self.dict_raises_test({})
+        self.container_raises_test({})
     
     def test_dict_extra_raises(self):
-        self.dict_raises_test({'a': object(), 'b': object()})
+        self.container_raises_test({'a': object(), 'b': object()})
 
 @pytest.mark.c
 class TestAPIViewCallableVerifyStructureOutput_call(
