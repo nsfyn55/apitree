@@ -26,6 +26,9 @@ class WrappedCallableSuccessError(Error):
         Without testing for this error, many tests could pass without the
         wrapped callable being called at all. """
 
+class CustomType(object):
+    """ A custom type used to confirm type-checking. """
+
 class TestBaseViewCallable(unittest.TestCase):
     """ A 'BaseViewCallable' view should have a 'view_kwargs' attribute, which
         is a dictionary of any keyword arguments provided to the decorator. """
@@ -339,7 +342,7 @@ class TestAPIViewCallableBasicBehavior(
         
         assert view_callable.view_kwargs == view_kwargs
 
-@pytest.mark.c
+@pytest.mark.d
 class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
     """ Confirm that input structure is checked with 'IOManager.verify'.
         
@@ -518,26 +521,97 @@ class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
         
         self.call_raises_test(view_callable, a=None)
 
-@pytest.mark.b
-class TestAPIViewCallableVerifyOutput(unittest.TestCase):
+@pytest.mark.c
+class TestAPIViewCallableVerifyStructureOutput(unittest.TestCase):
     """ Confirm that input structure is checked with 'IOManager.verify'.
         
         All 'output' values are considered to be 'required': output checking is
         strict. """
     
+    def return_test(self, expected_return, return_value):
+        """ The wrapped view callable returns a non-container value. """
+        @api_view(returns=expected_return)
+        def view_callable():
+            return return_value
+        
+        view_callable._call()
+    
     def test_no_returns_argument_passes(self):
+        """ Don't use 'return_test' for this test. It is necessary to
+            test the situation when no 'returns' argument is given. """
         @api_view
         def view_callable():
             return object()
         
         view_callable._call()
     
-    def test_item_present_passes(self):
-        @api_view(returns={'a': object})
-        def view_callable():
-            return {'a': None}
+    def test_returns_object_passes(self):
+        self.return_test(object, object())
+    
+    def container_test(self, return_value):
+        """ Test behavior when expected return value is a container-type. For
+            this test, a 'dict' value is used as a representative container-type
+            expected return. This test relies upon 'iomanager' to treat all
+            container types the same way. """
+        self.return_test({'a': object}, return_value)
+    
+    def dict_raises_test(self, return_value):
+        with pytest.raises(iomanager.VerificationFailureError):
+            self.dict_test(return_value)
+    
+    def test_dict_expected_passes(self):
+        self.dict_test({'a': object()})
+    
+    def test_dict_missing_raises(self):
+        self.dict_raises_test({})
+    
+    def test_dict_extra_raises(self):
+        self.dict_raises_test({'a': object(), 'b': object()})
+
+@pytest.mark.b
+class TestAPIViewCallableVerifyTypecheckInput(unittest.TestCase):
+    def typecheck_test(self, parameter_name, input_value):
+        @api_view(**{parameter_name: {'a': CustomType}})
+        def view_callable(a):
+            raise WrappedCallableSuccessError
         
-        result = view_callable._call
+        view_callable._call(a=input_value)
+    
+    def typecheck_passes_test(self, parameter_name):
+        with pytest.raises(WrappedCallableSuccessError):
+            self.typecheck_test(parameter_name, CustomType())
+    
+    def typecheck_raises_test(self, parameter_name):
+        with pytest.raises(iomanager.VerificationFailureError):
+            self.typecheck_test(parameter_name, object())
+    
+    def test_typecheck_passes_required(self):
+        self.typecheck_passes_test('required')
+    
+    def test_typecheck_passes_optional(self):
+        self.typecheck_passes_test('optional')
+    
+    def test_typecheck_raises_required(self):
+        self.typecheck_raises_test('required')
+    
+    def test_typecheck_raises_optional(self):
+        self.typecheck_raises_test('optional')
+
+@pytest.mark.b
+class TestApiViewCallableVerifyTypecheckOutput(unittest.TestCase):
+    def typecheck_test(self, output_value):
+        @api_view(returns=CustomType)
+        def view_callable():
+            return output_value
+        
+        view_callable._call()
+    
+    def test_typecheck_passes(self):
+        self.typecheck_test(CustomType())
+    
+    def test_typecheck_raises(self):
+        with pytest.raises(iomanager.VerificationFailureError):
+            self.typecheck_test(object())
 
 class CustomInputType(object):
     """ A custom type for testing coercion. """
