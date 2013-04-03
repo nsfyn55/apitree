@@ -2,7 +2,7 @@
 
 import unittest
 import pytest
-import ioprocess
+import iomanager
 
 from pyramid_apitree import (
     simple_view,
@@ -317,10 +317,11 @@ class TestAPIViewCallableBasicBehavior(
     ):
     view_decorator = api_view
     
-    def test_ioprocess_kwargs_collected(self):
-        """ Confirm that the special keyword arguments input/output processing
-            are not included in the 'view_kwargs' dictionary. """
-        ioprocess_kwargs = dict(
+    def test_iomanager_kwargs_collected(self):
+        """ Confirm that the special keyword arguments for verification and
+            coercion (using 'iomanager') are not included in the 'view_kwargs'
+            dictionary. """
+        iomanager_kwargs = dict(
             required=object(),
             optional=object(),
             unlimited=object(),
@@ -329,7 +330,7 @@ class TestAPIViewCallableBasicBehavior(
         view_kwargs = dict(
             predicate=object()
             )
-        decorator_kwargs = ioprocess_kwargs.copy()
+        decorator_kwargs = iomanager_kwargs.copy()
         decorator_kwargs.update(view_kwargs)
         
         @api_view(**decorator_kwargs)
@@ -339,11 +340,10 @@ class TestAPIViewCallableBasicBehavior(
         assert view_callable.view_kwargs == view_kwargs
 
 @pytest.mark.c
-class TestAPIViewCallableIOProcessInput(unittest.TestCase):
-    """ Confirm that 'IOProcessor.process' is being called to process input
-        values.
+class TestAPIViewCallableVerifyInput(unittest.TestCase):
+    """ Confirm that 'IOManager.verify' is being called to verify input values.
         
-        Confirm that keyword arguments for 'IOProcessor.process' can be passed
+        Confirm that keyword arguments for 'IOManager.verify' can be passed
         through the decorator.
         
         Confirm that parameters specifed in the wrapped callable definition and
@@ -358,7 +358,7 @@ class TestAPIViewCallableIOProcessInput(unittest.TestCase):
             view_callable._call(**kwargs)
     
     def call_raises_test(self, view_callable, **kwargs):
-        with pytest.raises(ioprocess.IOProcessFailureError):
+        with pytest.raises(iomanager.VerificationFailureError):
             view_callable._call(**kwargs)
     
     def test_no_kwargs_passes(self):
@@ -502,8 +502,8 @@ class TestAPIViewCallableIOProcessInput(unittest.TestCase):
         self.call_raises_test(view_callable, a=None)
 
 @pytest.mark.b
-class TestAPIViewCallableIOProcessOutput(unittest.TestCase):
-    """ Confirm that 'IOProcessor.process' is being called for view callable
+class TestAPIViewCallableVerifyOutput(unittest.TestCase):
+    """ Confirm that 'IOManager.verify' is being called for view callable
         output.
         
         All 'output' values are considered to be 'required': output checking is
@@ -534,7 +534,7 @@ class TestAPIViewCallableCoercion(unittest.TestCase):
             def coerce_custom_input(value):
                 if isinstance(value, CustomInputType):
                     return CustomCoercedType()
-                raise ioprocess.CoercionFailureError
+                raise iomanager.CoercionFailureError
             return {CustomCoercedType: coerce_custom_input}
         
         @property
@@ -542,7 +542,7 @@ class TestAPIViewCallableCoercion(unittest.TestCase):
             def coerce_custom_output(value):
                 if isinstance(value, CustomCoercedType):
                     return CustomOutputType()
-                raise ioprocess.CoercionFailureError
+                raise iomanager.CoercionFailureError
             return {CustomCoercedType: coerce_custom_output}
     
     def test_input_coercion(self):
