@@ -81,7 +81,6 @@ class BasicBehaviorTest(object):
         
         assert view_callable.view_kwargs == expected_view_kwargs
     
-    @pytest.mark.x
     def test_return_value_unchanged(self):
         """ Return value should be returned unchanged. """
         expected = object()
@@ -317,6 +316,7 @@ class TestAPIViewCallableBasicBehavior(
     ):
     view_decorator = api_view
     
+    @pytest.mark.a
     def test_iomanager_kwargs_collected(self):
         """ Confirm that the special keyword arguments for verification and
             coercion (using 'iomanager') are not included in the 'view_kwargs'
@@ -340,15 +340,14 @@ class TestAPIViewCallableBasicBehavior(
         assert view_callable.view_kwargs == view_kwargs
 
 @pytest.mark.c
-class TestAPIViewCallableVerifyInput(unittest.TestCase):
-    """ Confirm that 'IOManager.verify' is being called to verify input values.
+class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
+    """ Confirm that input structure is checked with 'IOManager.verify'.
         
         Confirm that keyword arguments for 'IOManager.verify' can be passed
         through the decorator.
         
-        Confirm that parameters specifed in the wrapped callable definition and
-        parameters specified in the decorator interact with each other in the
-        correct way.
+        Extra parameters in the function definition are included in 'verify'
+        combined iospec.
         
         Confirm that the 'unlimited' decorator argument behaves in the expected
         way. """
@@ -357,9 +356,32 @@ class TestAPIViewCallableVerifyInput(unittest.TestCase):
         with pytest.raises(WrappedCallableSuccessError):
             view_callable._call(**kwargs)
     
-    def call_raises_test(self, view_callable, **kwargs):
-        with pytest.raises(iomanager.VerificationFailureError):
+    def call_raises_error_test(self, view_callable, error_class, **kwargs):
+        with pytest.raises(error_class):
             view_callable._call(**kwargs)
+    
+    def call_raises_test(self, view_callable, **kwargs):
+        """ An error is raised by 'IOManager.verify()'. """
+        self.call_raises_error_test(
+            view_callable,
+            iomanager.VerificationFailureError,
+            **kwargs
+            )
+    
+    def mismatch_raises_test(self, **kwargs):
+        """ A TypeError is raised when the wrapped callable is called. This
+            happens when the 'verify' arguments (iospecs) allow arguments
+            through which are not allowed by the wrapped callable's parameter
+            definition. """
+        @api_view(**kwargs)
+        def view_callable():
+            pass
+        
+        self.call_raises_error_test(
+            view_callable,
+            TypeError,
+            a=None
+            )
     
     def test_no_kwargs_passes(self):
         @api_view
@@ -403,6 +425,25 @@ class TestAPIViewCallableVerifyInput(unittest.TestCase):
         
         self.call_passes_test(view_callable)
     
+    def test_definition_kwargs_not_unlimited(self):
+        """ When the view callable definition specifies a '**kwargs' parameter
+            and the 'unlimited' directive is not used, unknown keyword arguments
+            fail. """
+        @api_view
+        def view_callable(**kwargs):
+            pass
+        
+        self.call_raises_test(view_callable, a=None)
+    
+    def test_decorator_mismatch_required_raises(self):
+        self.mismatch_raises_test(required={'a': object})
+    
+    def test_decorator_mismatch_optional_raises(self):
+        self.mismatch_raises_test(optional={'a': object})
+    
+    def test_decorator_mismatch_unlimited_raises(self):
+        self.mismatch_raises_test(unlimited=True)
+    
     def test_decorator_required_present_passes(self):
         @api_view(required={'a': object})
         def view_callable(**kwargs):
@@ -430,20 +471,6 @@ class TestAPIViewCallableVerifyInput(unittest.TestCase):
             raise WrappedCallableSuccessError
         
         self.call_passes_test(view_callable)
-    
-    def test_decorator_optional_not_in_definition_raises(self):
-        @api_view(optional={'a': object})
-        def view_callable():
-            pass
-        
-        self.call_raises_test(view_callable, a=None)
-    
-    def test_decorator_required_not_in_definition_raises(self):
-        @api_view(required={'a': object})
-        def view_callable():
-            pass
-        
-        self.call_raises_test(view_callable, a=None)
     
     def test_decorator_required_overrides_definition_optional(self):
         @api_view(required={'a': object})
@@ -473,16 +500,6 @@ class TestAPIViewCallableVerifyInput(unittest.TestCase):
         
         self.call_passes_test(view_callable, a=None, b=None)
     
-    def test_definition_kwargs_not_unlimited(self):
-        """ When the view callable definition specifies a '**kwargs' parameter
-            and the 'unlimited' directive is not used, unknown keyword arguments
-            fail. """
-        @api_view
-        def view_callable(**kwargs):
-            pass
-        
-        self.call_raises_test(view_callable, a=None)
-    
     def test_decorator_unlimited_passes_with_definition_kwargs(self):
         """ When 'unlimited=True' AND the view callable definition specifies a
             '**kwargs' parameter, unknown keyword arguments pass. """
@@ -503,11 +520,17 @@ class TestAPIViewCallableVerifyInput(unittest.TestCase):
 
 @pytest.mark.b
 class TestAPIViewCallableVerifyOutput(unittest.TestCase):
-    """ Confirm that 'IOManager.verify' is being called for view callable
-        output.
+    """ Confirm that input structure is checked with 'IOManager.verify'.
         
         All 'output' values are considered to be 'required': output checking is
         strict. """
+    
+    def test_no_returns_argument_passes(self):
+        @api_view
+        def view_callable():
+            return object()
+        
+        view_callable._call()
     
     def test_item_present_passes(self):
         @api_view(returns={'a': object})
