@@ -726,19 +726,6 @@ class TestAPIViewCallableCoercion(unittest.TestCase):
         
         result = view_callable.wrapped_call()
         assert isinstance(result, CustomOutputType)
-    
-    def test_input_coercion_only_for_special_call(self):
-        """ '_call' coerces input, but not output. """
-        @self.CustomAPIViewCallable(
-            required={'a': CustomCoercedType},
-            returns=CustomCoercedType,
-            )
-        def view_callable(a):
-            assert isinstance(a, CustomCoercedType)
-            return a
-        
-        result = view_callable._call(a=CustomInputType())
-        assert isinstance(result, CustomCoercedType)
 
 
 
