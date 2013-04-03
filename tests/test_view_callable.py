@@ -26,9 +26,6 @@ class WrappedCallableSuccessError(Error):
         Without testing for this error, many tests could pass without the
         wrapped callable being called at all. """
 
-class CustomType(object):
-    """ A custom type used to confirm type-checking. """
-
 class TestBaseViewCallable(unittest.TestCase):
     """ A 'BaseViewCallable' view should have a 'view_kwargs' attribute, which
         is a dictionary of any keyword arguments provided to the decorator. """
@@ -342,8 +339,12 @@ class TestAPIViewCallableBasicBehavior(
         
         assert view_callable.view_kwargs == view_kwargs
 
-@pytest.mark.d
-class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
+class ViewCallableCallTest(object):
+    def view_callable_call(self, view_callable, **kwargs):
+        method = getattr(view_callable, self.method_name)
+        method(**kwargs)
+
+class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
     """ Confirm that input structure is checked with 'IOManager.verify'.
         
         Confirm that keyword arguments for 'IOManager.verify' can be passed
@@ -357,11 +358,13 @@ class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
     
     def call_passes_test(self, view_callable, **kwargs):
         with pytest.raises(WrappedCallableSuccessError):
-            view_callable._call(**kwargs)
+            #view_callable._call(**kwargs)
+            self.view_callable_call(view_callable, **kwargs)
     
     def call_raises_error_test(self, view_callable, error_class, **kwargs):
         with pytest.raises(error_class):
-            view_callable._call(**kwargs)
+            #view_callable._call(**kwargs)
+            self.view_callable_call(view_callable, **kwargs)
     
     def call_raises_test(self, view_callable, **kwargs):
         """ An error is raised by 'IOManager.verify()'. """
@@ -521,8 +524,21 @@ class TestAPIViewCallableVerifyStructureInput(unittest.TestCase):
         
         self.call_raises_test(view_callable, a=None)
 
-@pytest.mark.c
-class TestAPIViewCallableVerifyStructureOutput(unittest.TestCase):
+@pytest.mark.d
+class TestAPIViewCallableVerifyStructureInput_call(
+    APIViewCallableVerifyStructureInputTest,
+    unittest.TestCase,
+    ):
+    method_name = '_call'
+
+@pytest.mark.d
+class TestAPIViewCallableVerifyStructureInput_wrapped_call(
+    APIViewCallableVerifyStructureInputTest,
+    unittest.TestCase,
+    ):
+    method_name = 'wrapped_call'
+
+class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
     """ Confirm that input structure is checked with 'IOManager.verify'.
         
         All 'output' values are considered to be 'required': output checking is
@@ -534,7 +550,8 @@ class TestAPIViewCallableVerifyStructureOutput(unittest.TestCase):
         def view_callable():
             return return_value
         
-        view_callable._call()
+        #view_callable._call()
+        self.view_callable_call(view_callable)
     
     def test_no_returns_argument_passes(self):
         """ Don't use 'return_test' for this test. It is necessary to
@@ -543,7 +560,8 @@ class TestAPIViewCallableVerifyStructureOutput(unittest.TestCase):
         def view_callable():
             return object()
         
-        view_callable._call()
+        #view_callable._call()
+        self.view_callable_call(view_callable)
     
     def test_returns_object_passes(self):
         self.return_test(object, object())
@@ -568,14 +586,31 @@ class TestAPIViewCallableVerifyStructureOutput(unittest.TestCase):
     def test_dict_extra_raises(self):
         self.dict_raises_test({'a': object(), 'b': object()})
 
-@pytest.mark.b
-class TestAPIViewCallableVerifyTypecheckInput(unittest.TestCase):
+@pytest.mark.c
+class TestAPIViewCallableVerifyStructureOutput_call(
+    APIViewCallableVerifyStructureOutputTest,
+    unittest.TestCase,
+    ):
+    method_name = '_call'
+
+@pytest.mark.c
+class TestAPIViewCallableVerifyStructureOutput_wrapped_call(
+    APIViewCallableVerifyStructureOutputTest,
+    unittest.TestCase,
+    ):
+    method_name = 'wrapped_call'
+
+class CustomType(object):
+    """ A custom type used to confirm type-checking. """
+
+class APIViewCallableVerifyTypecheckInputTest(ViewCallableCallTest):
     def typecheck_test(self, parameter_name, input_value):
         @api_view(**{parameter_name: {'a': CustomType}})
         def view_callable(a):
             raise WrappedCallableSuccessError
         
-        view_callable._call(a=input_value)
+        #view_callable._call(a=input_value)
+        self.view_callable_call(view_callable, a=input_value)
     
     def typecheck_passes_test(self, parameter_name):
         with pytest.raises(WrappedCallableSuccessError):
@@ -598,7 +633,20 @@ class TestAPIViewCallableVerifyTypecheckInput(unittest.TestCase):
         self.typecheck_raises_test('optional')
 
 @pytest.mark.b
-class TestApiViewCallableVerifyTypecheckOutput(unittest.TestCase):
+class TestAPIViewCallableVerifyTypecheckInput_call(
+    APIViewCallableVerifyTypecheckInputTest,
+    unittest.TestCase,
+    ):
+    method_name = '_call'
+
+@pytest.mark.b
+class TestAPIViewCallableVerifyTypecheckInput_wrapped_call(
+    APIViewCallableVerifyTypecheckInputTest,
+    unittest.TestCase,
+    ):
+    method_name = 'wrapped_call'
+
+class APIViewCallableVerifyTypecheckOutputTest(ViewCallableCallTest):
     def typecheck_test(self, output_value):
         @api_view(returns=CustomType)
         def view_callable():
@@ -612,6 +660,20 @@ class TestApiViewCallableVerifyTypecheckOutput(unittest.TestCase):
     def test_typecheck_raises(self):
         with pytest.raises(iomanager.VerificationFailureError):
             self.typecheck_test(object())
+
+@pytest.mark.b
+class TestAPIViewCallableVerifyTypecheckOutput_call(
+    APIViewCallableVerifyTypecheckOutputTest,
+    unittest.TestCase,
+    ):
+    method_name = '_call'
+
+@pytest.mark.b
+class TestAPIViewCallableVerifyTypecheckOutput_wrapped_call(
+    APIViewCallableVerifyTypecheckOutputTest,
+    unittest.TestCase,
+    ):
+    method_name = 'wrapped_call'
 
 class CustomInputType(object):
     """ A custom type for testing coercion. """
