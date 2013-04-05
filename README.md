@@ -2,7 +2,7 @@
 pyramid_apitree
 ===============
 
-A package for making an orderly API from Pyramid views.
+A Python package for making an orderly API from Pyramid views.
 
 
 
