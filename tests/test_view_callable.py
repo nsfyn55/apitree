@@ -730,6 +730,38 @@ class TestAPIViewCallableVerifyTypecheckOutput_wrapped_call(
 
 # --------------- APIViewCallable custom IOManager tests ---------------
 
+class CustomTypecheckType(object):
+    pass
+
+class CustomVerificationIOManager(iomanager.IOManager):
+    class ConfirmationError(Error):
+        pass
+    
+    def typecheck_custom(self, value, expected_type):
+        raise self.ConfirmationError
+    
+    input_kwargs = {
+        'coercion_functions': {CustomTypecheckType: typecheck_custom}
+        }
+
+class TestAPIViewCallableCustomIOManager(unittest.TestCase):
+    """ The 'iomanager_class' class attribute can be used to assign a custom
+        IOManager subclass to a view callable class. """
+    
+    class CustomAPIViewCallable(APIViewCallable):
+        iomanager_class = CustomVerificationIOManager
+    
+    @pytest.mark.y
+    def test_custom_iomanager_class(self):
+        @self.CustomAPIViewCallable(
+            required={'a': CustomTypecheckType}
+            )
+        def view_callable(**kwargs):
+            pass
+        
+        with pytest.raises(CustomVerificationIOManager.ConfirmationError):
+            view_callable._call(a=object())
+
 
 
 # ------------------- APIViewCallable coercion tests -------------------
