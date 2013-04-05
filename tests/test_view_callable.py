@@ -382,6 +382,10 @@ class TestAPIViewCallableBasicBehavior(
         
         assert view_callable.view_kwargs == view_kwargs
 
+
+
+# ----------------- APIViewCallable verification tests -----------------
+
 class ViewCallableCallTest(object):
     def view_callable_call(self, view_callable, **kwargs):
         method = getattr(view_callable, self.method_name)
@@ -722,6 +726,14 @@ class TestAPIViewCallableVerifyTypecheckOutput_wrapped_call(
     ):
     method_name = 'wrapped_call'
 
+
+
+# --------------- APIViewCallable custom IOManager tests ---------------
+
+
+
+# ------------------- APIViewCallable coercion tests -------------------
+
 class CustomInputType(object):
     """ A custom type for testing coercion. """
 
@@ -731,26 +743,33 @@ class CustomCoercedType(object):
 class CustomOutputType(object):
     """ A custom type for testing output coercion. """
 
+def coerce_custom_input(self, value):
+    if isinstance(value, CustomInputType):
+        return CustomCoercedType()
+    return value
+
+def coerce_custom_output(self, value):
+    if isinstance(value, CustomCoercedType):
+        return CustomOutputType()
+    return value
+
+class CustomCoercionIOManager(iomanager.IOManager):
+    input_kwargs = {
+        'coercion_functions': {CustomCoercedType: coerce_custom_input}
+        }
+    output_kwargs = {
+        'coercion_functions': {CustomCoercedType: coerce_custom_output}
+        }
+
 @pytest.mark.a
 class TestAPIViewCallableCoercion(unittest.TestCase):
+    """ Input and output values go through coercion. """
+        
     class CustomAPIViewCallable(APIViewCallable):
         """ A view callable that coerces input and output value types. """
-        @property
-        def input_coercion_functions(self):
-            def coerce_custom_input(value):
-                if isinstance(value, CustomInputType):
-                    return CustomCoercedType()
-                raise iomanager.CoercionFailureError
-            return {CustomCoercedType: coerce_custom_input}
-        
-        @property
-        def output_coercion_functions(self):
-            def coerce_custom_output(value):
-                if isinstance(value, CustomCoercedType):
-                    return CustomOutputType()
-                raise iomanager.CoercionFailureError
-            return {CustomCoercedType: coerce_custom_output}
+        iomanager_class = CustomCoercionIOManager
     
+    @pytest.mark.x
     def test_input_coercion(self):
         """ 'wrapped_call' coerces input. """
         @self.CustomAPIViewCallable(
