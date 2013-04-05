@@ -1,4 +1,5 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+import iomanager
 from iomanager import (
     IOManager,
     VerificationFailureError,
@@ -7,13 +8,18 @@ from iomanager import (
 class BaseViewCallable(object):
     def __init__(self, *pargs, **kwargs):
         if pargs:
+            # Decorator without keyword arguments.
             self.set_wrapped(pargs[0])
-        
-        self.setup(kwargs)
+            self.setup(kwargs)
+        else:
+            # Decorator with keyword arguments.
+            self._setup_kwargs = kwargs
     
     def __call__(self, obj):
         if not hasattr(self, 'wrapped'):
+            # Decorator with keyword arguments - after '__init__'.
             self.set_wrapped(obj)
+            self.setup(self.__dict__.pop('_setup_kwargs'))
             return self
         
         return self.view_call(obj)
@@ -87,9 +93,18 @@ class APIViewCallable(FunctionViewCallable):
     
     def setup(self, kwargs_dict):
         """ Stash kwargs dicts for input/output processing. """
-        input_kwargs = self.get_items_from_dict(
+        # Highest priority.
+        decorator_input_kwargs = self.get_items_from_dict(
             kwargs_dict,
             ['required', 'optional', 'unlimited']
+            )
+        
+        # Lower priority.
+        callable_input_kwargs = iomanager.iospecs_from_callable(self.wrapped)
+        
+        input_kwargs = iomanager.combine_iospecs(
+            decorator_input_kwargs,
+            callable_input_kwargs,
             )
         
         output_kwargs = self.get_items_from_dict(
