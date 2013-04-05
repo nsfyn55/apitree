@@ -40,8 +40,6 @@ class TestBaseViewCallable(unittest.TestCase):
             pass
         
         self.view_kwargs_test(view_callable, {})
-        #assert hasattr(view_callable, 'view_kwargs')
-        #assert view_callable.view_kwargs == {}
     
     def test_empty_kwargs(self):
         @BaseViewCallable()
@@ -49,8 +47,6 @@ class TestBaseViewCallable(unittest.TestCase):
             pass
         
         self.view_kwargs_test(view_callable, {})
-        #assert hasattr(view_callable, 'view_kwargs')
-        #assert view_callable.view_kwargs == {}
     
     def test_yes_kwargs(self):
         PREDICATE_VALUE = object()
@@ -59,8 +55,6 @@ class TestBaseViewCallable(unittest.TestCase):
             pass
         
         self.view_kwargs_test(view_callable, {'predicate': PREDICATE_VALUE})
-        #assert hasattr(view_callable, 'view_kwargs')
-        #assert view_callable.view_kwargs == {'predicate': PREDICATE_VALUE}
     
     def test_wrapped_not_callable_raises(self):
         """ If wrapped function is not callable, an error is raised. """
@@ -766,12 +760,12 @@ class CustomCoercedType(object):
 class CustomOutputType(object):
     """ A custom type for testing output coercion. """
 
-def coerce_custom_input(self, value):
+def coerce_custom_input(value):
     if isinstance(value, CustomInputType):
         return CustomCoercedType()
     return value
 
-def coerce_custom_output(self, value):
+def coerce_custom_output(value):
     if isinstance(value, CustomCoercedType):
         return CustomOutputType()
     return value

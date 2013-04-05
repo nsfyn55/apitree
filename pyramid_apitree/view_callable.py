@@ -94,7 +94,10 @@ class APIViewCallable(FunctionViewCallable):
         return result
     
     def setup(self, kwargs_dict):
-        """ Stash kwargs dicts for input/output processing. """
+        """ Set up view callable.
+            
+            Access special decorator keyword arguments using
+            'get_items_from_dict' method. """
         # Highest priority.
         decorator_input_kwargs = self.get_items_from_dict(
             kwargs_dict,
@@ -126,6 +129,13 @@ class APIViewCallable(FunctionViewCallable):
             }
         
         super(APIViewCallable, self).setup(remaining_kwargs)
+    
+    def wrapped_call(self, **kwargs):
+        coerced_kwargs = self.manager.coerce_input(kwargs)
+        
+        result =  self._call(**coerced_kwargs)
+        
+        return self.manager.coerce_output(result)
     
     def _call(self, *pargs, **kwargs):
         self._reject_pargs(pargs)
