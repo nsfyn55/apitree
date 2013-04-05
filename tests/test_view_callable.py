@@ -437,7 +437,6 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_passes_test(view_callable)
     
-    @pytest.mark.f
     def test_unknown_kwarg_raises(self):
         @api_view
         def view_callable():
@@ -527,13 +526,6 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_raises_test(view_callable)
     
-    def test_decorator_mismatch_optional_definition_required(self):
-        @api_view(optional={'a': object})
-        def view_callable(a):
-            raise WrappedCallableSuccessError
-        
-        self.call_raises_error_test(view_callable, TypeError)
-    
     def test_decorator_required_compliments_definition_required(self):
         @api_view(required={'b': object})
         def view_callable(a, **kwargs):
@@ -566,8 +558,21 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         def view_callable():
             pass
         
-        
         self.call_raises_error_test(view_callable, TypeError, a=None)
+    
+    def test_decorator_optional_definition_required_no_type_checking(self):
+        """ When a parameter is 'required' in the callable definition, but
+            'optional' in the decorator arguments, the callable definition
+            takes priority. Be careful! This means that type checking and
+            coercion will not apply to arguments that have been mismatched.
+            
+            You should probably add additional tests to confirm all of the
+            mismatch behaviors. """
+        @api_view(optional={'a': CustomType})
+        def view_callable(a):
+            raise WrappedCallableSuccessError
+        
+        self.call_passes_test(view_callable, a=object())
 
 @pytest.mark.e
 class TestAPIViewCallableVerifyStructureInput_call(
@@ -649,10 +654,9 @@ class CustomType(object):
 class APIViewCallableVerifyTypecheckInputTest(ViewCallableCallTest):
     def typecheck_test(self, parameter_name, input_value):
         @api_view(**{parameter_name: {'a': CustomType}})
-        def view_callable(a):
+        def view_callable(**kwargs):
             raise WrappedCallableSuccessError
         
-        #view_callable._call(a=input_value)
         self.view_callable_call(view_callable, a=input_value)
     
     def typecheck_passes_test(self, parameter_name):

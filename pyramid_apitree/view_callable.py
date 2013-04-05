@@ -53,7 +53,7 @@ class FunctionViewCallable(BaseViewCallable):
         kwargs_dict = {}
         special_kwargs = self.special_kwargs(request)
         
-        # Listed in reverse-precedence order (last has highest precedence).
+        # Listed in reverse-priority order (last has highest priority).
         kwargs_sources = [kwargs_body, kwargs_get, kwargs_url, special_kwargs]
         
         for item in kwargs_sources:
@@ -129,6 +129,12 @@ class APIViewCallable(FunctionViewCallable):
         self._reject_pargs(pargs)
         
         self.manager.verify_input(iovalue=kwargs)
+        
+        result = self.wrapped(*pargs, **kwargs)
+        
+        self.manager.verify_output(iovalue=result)
+        
+        return result
 
 
 
