@@ -80,6 +80,8 @@ class FunctionViewCallable(BaseViewCallable):
         return self.wrapped(**kwargs)
 
 class APIViewCallable(FunctionViewCallable):
+    iomanager_class = IOManager
+    
     def get_items_from_dict(self, dict_obj, keys, result_keys=None):
         if result_keys is None:
             result_keys = list(keys)
@@ -113,7 +115,7 @@ class APIViewCallable(FunctionViewCallable):
             ['required']
             )
         
-        self.manager = IOManager(
+        self.manager = self.iomanager_class(
             input_kwargs=input_kwargs,
             output_kwargs=output_kwargs
             )

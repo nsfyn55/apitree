@@ -578,14 +578,12 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_passes_test(view_callable, a=object())
 
-@pytest.mark.e
 class TestAPIViewCallableVerifyStructureInput_call(
     APIViewCallableVerifyStructureInputTest,
     unittest.TestCase,
     ):
     method_name = '_call'
 
-@pytest.mark.d
 class TestAPIViewCallableVerifyStructureInput_wrapped_call(
     APIViewCallableVerifyStructureInputTest,
     unittest.TestCase,
@@ -638,14 +636,12 @@ class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
     def test_dict_extra_raises(self):
         self.container_raises_test({'a': object(), 'b': object()})
 
-@pytest.mark.c
 class TestAPIViewCallableVerifyStructureOutput_call(
     APIViewCallableVerifyStructureOutputTest,
     unittest.TestCase,
     ):
     method_name = '_call'
 
-@pytest.mark.c
 class TestAPIViewCallableVerifyStructureOutput_wrapped_call(
     APIViewCallableVerifyStructureOutputTest,
     unittest.TestCase,
@@ -683,14 +679,12 @@ class APIViewCallableVerifyTypecheckInputTest(ViewCallableCallTest):
     def test_typecheck_raises_optional(self):
         self.typecheck_raises_test('optional')
 
-@pytest.mark.b
 class TestAPIViewCallableVerifyTypecheckInput_call(
     APIViewCallableVerifyTypecheckInputTest,
     unittest.TestCase,
     ):
     method_name = '_call'
 
-@pytest.mark.b
 class TestAPIViewCallableVerifyTypecheckInput_wrapped_call(
     APIViewCallableVerifyTypecheckInputTest,
     unittest.TestCase,
@@ -712,14 +706,12 @@ class APIViewCallableVerifyTypecheckOutputTest(ViewCallableCallTest):
         with pytest.raises(iomanager.VerificationFailureError):
             self.typecheck_test(object())
 
-@pytest.mark.b
 class TestAPIViewCallableVerifyTypecheckOutput_call(
     APIViewCallableVerifyTypecheckOutputTest,
     unittest.TestCase,
     ):
     method_name = '_call'
 
-@pytest.mark.b
 class TestAPIViewCallableVerifyTypecheckOutput_wrapped_call(
     APIViewCallableVerifyTypecheckOutputTest,
     unittest.TestCase,
@@ -733,15 +725,15 @@ class TestAPIViewCallableVerifyTypecheckOutput_wrapped_call(
 class CustomTypecheckType(object):
     pass
 
+class TypeCheckConfirmationError(Error):
+    """ A custom error to confirm that the custom IOManager is being used. """
+
 class CustomVerificationIOManager(iomanager.IOManager):
-    class ConfirmationError(Error):
-        pass
-    
-    def typecheck_custom(self, value, expected_type):
-        raise self.ConfirmationError
+    def typecheck_custom(value, expected_type):
+        raise TypeCheckConfirmationError
     
     input_kwargs = {
-        'coercion_functions': {CustomTypecheckType: typecheck_custom}
+        'typecheck_functions': {CustomTypecheckType: typecheck_custom}
         }
 
 class TestAPIViewCallableCustomIOManager(unittest.TestCase):
@@ -751,7 +743,6 @@ class TestAPIViewCallableCustomIOManager(unittest.TestCase):
     class CustomAPIViewCallable(APIViewCallable):
         iomanager_class = CustomVerificationIOManager
     
-    @pytest.mark.y
     def test_custom_iomanager_class(self):
         @self.CustomAPIViewCallable(
             required={'a': CustomTypecheckType}
@@ -759,7 +750,7 @@ class TestAPIViewCallableCustomIOManager(unittest.TestCase):
         def view_callable(**kwargs):
             pass
         
-        with pytest.raises(CustomVerificationIOManager.ConfirmationError):
+        with pytest.raises(TypeCheckConfirmationError):
             view_callable._call(a=object())
 
 
