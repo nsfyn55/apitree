@@ -1,11 +1,15 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+from iomanager import (
+    IOManager,
+    VerificationFailureError,
+    )
 
 class BaseViewCallable(object):
     def __init__(self, *pargs, **kwargs):
         if pargs:
             self.set_wrapped(pargs[0])
         
-        self.stash_kwargs(kwargs)
+        self.setup(kwargs)
     
     def __call__(self, obj):
         if not hasattr(self, 'wrapped'):
@@ -14,7 +18,7 @@ class BaseViewCallable(object):
         
         return self.view_call(obj)
     
-    def stash_kwargs(self, kwargs_dict):
+    def setup(self, kwargs_dict):
         self.view_kwargs = kwargs_dict
     
     def set_wrapped(self, wrapped):
@@ -49,7 +53,6 @@ class FunctionViewCallable(BaseViewCallable):
         for item in kwargs_sources:
             kwargs_dict.update(item)
         
-        #return self._call(**kwargs_dict)
         return self.wrapped_call(**kwargs_dict)
     
     def special_kwargs(self, request):
@@ -58,12 +61,15 @@ class FunctionViewCallable(BaseViewCallable):
     def wrapped_call(self, **kwargs):
         return self._call(**kwargs)
     
-    def _call(self, *pargs, **kwargs):
+    def _reject_pargs(self, pargs):
         if pargs:
             raise TypeError(
                 "When using the '_call' method, you must provide all arguments "
                 "as keyword arguments."
             )
+    
+    def _call(self, *pargs, **kwargs):
+        self._reject_pargs(pargs)
         
         return self.wrapped(**kwargs)
 
@@ -79,22 +85,22 @@ class APIViewCallable(FunctionViewCallable):
                 continue
         return result
     
-    def stash_kwargs(self, kwargs_dict):
+    def setup(self, kwargs_dict):
         """ Stash kwargs dicts for input/output processing. """
-        self.verify_input_kwargs = self.get_items_from_dict(
+        input_kwargs = self.get_items_from_dict(
             kwargs_dict,
-            ['required', 'optional', 'unlimited'],
+            ['required', 'optional', 'unlimited']
             )
         
-        self.coerce_input_kwargs = self.get_items_from_dict(
-            kwargs_dict,
-            ['required', 'optional'],
-            )
-        
-        self.process_output_kwargs = self.get_items_from_dict(
+        output_kwargs = self.get_items_from_dict(
             kwargs_dict,
             ['returns'],
             ['required']
+            )
+        
+        self.manager = IOManager(
+            input_kwargs=input_kwargs,
+            output_kwargs=output_kwargs
             )
         
         remaining_kwargs = {
@@ -102,7 +108,12 @@ class APIViewCallable(FunctionViewCallable):
             if ikey not in ['required', 'optional', 'unlimited', 'returns']
             }
         
-        super(APIViewCallable, self).stash_kwargs(remaining_kwargs)
+        super(APIViewCallable, self).setup(remaining_kwargs)
+    
+    def _call(self, *pargs, **kwargs):
+        self._reject_pargs(pargs)
+        
+        self.manager.verify_input(iovalue=kwargs)
 
 
 

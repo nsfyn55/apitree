@@ -360,7 +360,6 @@ class TestAPIViewCallableBasicBehavior(
     ):
     view_decorator = api_view
     
-    @pytest.mark.f
     def test_iomanager_kwargs_collected(self):
         """ Confirm that the special keyword arguments for verification and
             coercion (using 'iomanager') are not included in the 'view_kwargs'
@@ -402,12 +401,10 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
     
     def call_passes_test(self, view_callable, **kwargs):
         with pytest.raises(WrappedCallableSuccessError):
-            #view_callable._call(**kwargs)
             self.view_callable_call(view_callable, **kwargs)
     
     def call_raises_error_test(self, view_callable, error_class, **kwargs):
         with pytest.raises(error_class):
-            #view_callable._call(**kwargs)
             self.view_callable_call(view_callable, **kwargs)
     
     def call_raises_test(self, view_callable, **kwargs):
@@ -440,7 +437,7 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_passes_test(view_callable)
     
-    @pytest.mark.e
+    @pytest.mark.f
     def test_unknown_kwarg_raises(self):
         @api_view
         def view_callable():
@@ -572,7 +569,7 @@ class APIViewCallableVerifyStructureInputTest(ViewCallableCallTest):
         
         self.call_raises_error_test(view_callable, TypeError, a=None)
 
-@pytest.mark.d
+@pytest.mark.e
 class TestAPIViewCallableVerifyStructureInput_call(
     APIViewCallableVerifyStructureInputTest,
     unittest.TestCase,
@@ -587,7 +584,7 @@ class TestAPIViewCallableVerifyStructureInput_wrapped_call(
     method_name = 'wrapped_call'
 
 class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
-    """ Confirm that input structure is checked with 'IOManager.verify'.
+    """ Confirm that output structure is checked with 'IOManager.verify'.
         
         All 'output' values are considered to be 'required': output checking is
         strict. """
@@ -598,7 +595,6 @@ class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
         def view_callable():
             return return_value
         
-        #view_callable._call()
         self.view_callable_call(view_callable)
     
     def test_no_returns_argument_passes(self):
@@ -608,7 +604,6 @@ class APIViewCallableVerifyStructureOutputTest(ViewCallableCallTest):
         def view_callable():
             return object()
         
-        #view_callable._call()
         self.view_callable_call(view_callable)
     
     def test_returns_object_passes(self):
