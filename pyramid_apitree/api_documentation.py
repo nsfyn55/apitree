@@ -2,3 +2,6 @@
 
 class APIDocumentationView(object):
     pass
+
+def prepare_item(value):
+    pass

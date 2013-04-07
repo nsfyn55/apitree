@@ -760,12 +760,12 @@ class CustomCoercedType(object):
 class CustomOutputType(object):
     """ A custom type for testing output coercion. """
 
-def coerce_custom_input(value):
+def coerce_custom_input(value, expected_type):
     if isinstance(value, CustomInputType):
         return CustomCoercedType()
     return value
 
-def coerce_custom_output(value):
+def coerce_custom_output(value, expected_type):
     if isinstance(value, CustomCoercedType):
         return CustomOutputType()
     return value
