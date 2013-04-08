@@ -8,7 +8,7 @@ from pyramid_apitree.api_documentation import prepare_item
 
 def prep_json(s, n=0, **kwargs):
     kwargs.setdefault('indent', 4)
-    json_s = json.dumps(s, **kwargs)
+    json_s = json.dumps(s, **kwargs).replace("'", '').replace('"', '')
     return '\n'.join("    " * n + line for line in  json_s.splitlines())
 
 @pytest.mark.a
@@ -48,7 +48,7 @@ class TestPrepareItem(unittest.TestCase):
     def test_listof_list(self):
         expected = (
             'ListOf(\n' +
-            prep_json(['object'])
+            prep_json(['object'], 1) + '\n'
             +')'
             )
         result = prepare_item(ListOf([object]))
@@ -57,7 +57,7 @@ class TestPrepareItem(unittest.TestCase):
     def test_listof_dict(self):
         expected = (
             "ListOf(\n"
-            + prep_json({'a': 'object'}, 1)
+            + prep_json({'a': 'object'}, 1) + '\n'
             + ')'
             )
         result = prepare_item(ListOf({'a': object}))
