@@ -12,6 +12,6 @@ setup(
     description=('Make an orderly API from Pyramid views.'),
     long_description=open('README.md').read(),
     install_requires=[
-        'iomanager>=0.3.1',
+        'iomanager>=0.3.2',
         ],
     )
