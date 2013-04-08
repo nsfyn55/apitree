@@ -72,9 +72,9 @@ def scan_api_tree(configurator, api_tree, root_path=''):
     endpoints = get_endpoints(api_tree, root_path=root_path)
     
     for complete_route, view_dicts_list in endpoints.iteritems():
+        configurator.add_route(name=complete_route, pattern=complete_route)
+        
         for view_dict in view_dicts_list:
-            configurator.add_route(name=complete_route, pattern=complete_route)
-            
             configurator.add_view(
                 route_name=complete_route,
                 **view_dict

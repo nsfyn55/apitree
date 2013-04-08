@@ -9,7 +9,7 @@ setup(
     scripts=[],
     url='https://github.com/jmatthias/pyramid_apitree',
     license='LICENSE.txt',
-    description=('Make an orderly API from Pyramid views.'),
+    description=('Unstable beta release.'),
     long_description=open('README.md').read(),
     install_requires=[
         'iomanager>=0.3.2',
