@@ -23,6 +23,7 @@ class BaseViewCallable(object):
             return self
         
         self.request = obj
+        self.authenticate()
         return self.view_call()
     
     def setup(self, kwargs_dict):
@@ -32,6 +33,9 @@ class BaseViewCallable(object):
         if not callable(wrapped):
             raise TypeError('Wrapped object must be callable.')
         self.wrapped = wrapped
+    
+    def authenticate(self):
+        pass
 
 class SimpleViewCallable(BaseViewCallable):
     def view_call(self):
