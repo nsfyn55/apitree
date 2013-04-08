@@ -230,7 +230,7 @@ class TestFunctionViewCallableKwargsSources(unittest.TestCase):
         method_kwargs = expected_kwargs.copy()
         
         class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
-            def special_kwargs(self, request):
+            def special_kwargs(self):
                 return method_kwargs
         
         @SpecialKwargsFunctionViewCallable
@@ -292,7 +292,7 @@ class TestFunctionViewCallableKwargsSourcesPrecedence(unittest.TestCase):
         expected_value = object()
         
         class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
-            def special_kwargs(self, request):
+            def special_kwargs(self):
                 return {'a': expected_value}
         
         request = self.make_request('matchdict', 'GET', request_body_source)
