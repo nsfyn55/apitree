@@ -11,11 +11,9 @@ def prep_json(s, n=0, **kwargs):
     json_s = json.dumps(s, **kwargs).replace("'", '').replace('"', '')
     return '\n'.join("    " * n + line for line in  json_s.splitlines())
 
-@pytest.mark.a
 class TestPrepareItem(unittest.TestCase):
     """ Test the function which prepares the API documentation result by
         converting class objects to name-strings. """
-    @pytest.mark.b
     def test_custom_class(self):
         class CustomClass(object):
             pass
