@@ -22,7 +22,8 @@ class BaseViewCallable(object):
             self.setup(self.__dict__.pop('_setup_kwargs'))
             return self
         
-        return self.view_call(obj)
+        self.request = obj
+        return self.view_call()
     
     def setup(self, kwargs_dict):
         self.view_kwargs = kwargs_dict
@@ -33,12 +34,12 @@ class BaseViewCallable(object):
         self.wrapped = wrapped
 
 class SimpleViewCallable(BaseViewCallable):
-    def view_call(self, request):
-        return self.wrapped(request)
+    def view_call(self):
+        return self.wrapped(self.request)
 
 class FunctionViewCallable(BaseViewCallable):
-    def view_call(self, request):
-        self.request = request
+    def view_call(self):
+        request = self.request
         
         kwargs_url = dict(request.matchdict)
         kwargs_get = dict(request.GET)
