@@ -760,12 +760,12 @@ class CustomCoercedType(object):
 class CustomOutputType(object):
     """ A custom type for testing output coercion. """
 
-def coerce_custom_input(value):
+def coerce_custom_input(value, expected_type):
     if isinstance(value, CustomInputType):
         return CustomCoercedType()
     return value
 
-def coerce_custom_output(value):
+def coerce_custom_output(value, expected_type):
     if isinstance(value, CustomCoercedType):
         return CustomOutputType()
     return value
@@ -778,7 +778,6 @@ class CustomCoercionIOManager(iomanager.IOManager):
         'coercion_functions': {CustomCoercedType: coerce_custom_output}
         }
 
-@pytest.mark.a
 class TestAPIViewCallableCoercion(unittest.TestCase):
     """ Input and output values go through coercion. """
         
@@ -786,7 +785,6 @@ class TestAPIViewCallableCoercion(unittest.TestCase):
         """ A view callable that coerces input and output value types. """
         iomanager_class = CustomCoercionIOManager
     
-    @pytest.mark.x
     def test_input_coercion(self):
         """ 'wrapped_call' coerces input. """
         @self.CustomAPIViewCallable(

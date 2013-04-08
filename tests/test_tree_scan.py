@@ -105,11 +105,9 @@ class ScanTest(unittest.TestCase):
         for item in request_methods:
             assert item in config.views[path].keys()
             
-            view_dict_expected = expected_view_dict.copy()
-            
             view_dict = config.views[path][item].copy()
             
-            assert view_dict == view_dict_expected
+            assert view_dict == expected_view_dict
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):

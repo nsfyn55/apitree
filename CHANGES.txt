@@ -12,3 +12,8 @@ v0.1.0, 2013-04-05 -- Working release.
 - 'scan_api_tree': A function that scans a dictionary of view-callables and
   registers each of them with a Pyramid 'Configurator' instance. Endpoint paths
   are constructed recursively.
+
+v0.1.0a, 2013-04-08 -- Beta: API documentation
+- Add 'api_documentation' module.
+- Add 'prepare_item' function to prepare 'iospec' values for rendering in HTML and
+  JSON.
