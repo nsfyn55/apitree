@@ -11,7 +11,7 @@ def indent(s):
     return '\n'.join([INDENT_STR + line for line in s.splitlines()])
 
 def prepare_item(value):
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         return prepare_list(value)
     if isinstance(value, dict):
         return prepare_dict(value)
