@@ -27,7 +27,9 @@ class BaseViewCallable(object):
         return self.view_call()
     
     def setup(self, kwargs_dict):
-        self.view_kwargs = kwargs_dict
+        view_kwargs = getattr(self, 'default_view_kwargs', {}).copy()
+        view_kwargs.update(kwargs_dict)
+        self.view_kwargs = view_kwargs
     
     def set_wrapped(self, wrapped):
         if not callable(wrapped):

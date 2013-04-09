@@ -152,6 +152,21 @@ class TestDefaultViewKwargs(unittest.TestCase):
             pass
         
         assert view_callable.view_kwargs['predicate'] == expected
+    
+    def test_class_dict_is_copied(self):
+        """ The 'default_view_kwargs' dict must be copied so that it is not
+            mutated when the view callable class is instantiated. """
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {}
+        
+        @CustomViewCallable
+        def view_callable():
+            pass
+        
+        assert (
+            view_callable.view_kwargs is not
+            CustomViewCallable.default_view_kwargs
+            )
 
 class BasicBehaviorTest(object):
     """ For all view callable classes, confirm some common behaviors. """
