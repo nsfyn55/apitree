@@ -62,8 +62,7 @@ class TestBaseViewCallable(unittest.TestCase):
         with pytest.raises(TypeError):
             BaseViewCallable(not_callable)
 
-@pytest.mark.a
-class TestBaseViewCallableAuthentication(unittest.TestCase):
+class TestAuthentication(unittest.TestCase):
     """ 'authenticate' has acces to the request object through 'self.request'.
         
         'authenticate' is called before 'view_call'. """
@@ -124,6 +123,35 @@ class TestBaseViewCallableAuthentication(unittest.TestCase):
         
         with pytest.raises(self.ViewCallConfirmationError):
             view_callable(None)
+
+@pytest.mark.a
+class TestDefaultViewKwargs(unittest.TestCase):
+    """ The class attribute 'default_view_kwargs' is used as default values for
+        the 'view_kwargs' value. """
+    def test_defaults(self):
+        expected = object()
+        
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {'predicate': expected}
+        
+        @CustomViewCallable
+        def view_callable():
+            pass
+        
+        assert view_callable.view_kwargs['predicate'] == expected
+    
+    def test_decorator_overrides_defaults(self):
+        """ 'view_kwags' provided to the decorator override defaults. """
+        expected = object()
+        
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {'predicate': object()}
+        
+        @CustomViewCallable(predicate=expected)
+        def view_callable():
+            pass
+        
+        assert view_callable.view_kwargs['predicate'] == expected
 
 class BasicBehaviorTest(object):
     """ For all view callable classes, confirm some common behaviors. """
