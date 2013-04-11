@@ -9,7 +9,7 @@ class APIDocumentationView(object):
     def indent(s):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
     
-    def prepare_item(self, value):
+    def prepare(self, value):
         if isinstance(value, (list, tuple)):
             return self.prepare_list(value)
         if isinstance(value, dict):
@@ -21,7 +21,7 @@ class APIDocumentationView(object):
     
     def prepare_list(self, value):
         start, end = '[]'
-        prepared_lines = map(self.prepare_item, value)
+        prepared_lines = map(self.prepare, value)
         all_lines = [start] + map(self.indent, prepared_lines) + [end]
         
         return '\n'.join(all_lines)
@@ -29,7 +29,7 @@ class APIDocumentationView(object):
     def prepare_dict(self, value):
         start, end = '{}'
         prepared_lines = [
-            "{}: {}".format(ikey, self.prepare_item(ivalue))
+            "{}: {}".format(ikey, self.prepare(ivalue))
             for ikey, ivalue in value.iteritems()
             ]
         all_lines = [start] + map(self.indent, prepared_lines) + [end]
@@ -42,10 +42,10 @@ class APIDocumentationView(object):
         iospec_obj = value.iospec_obj
         if not isinstance(iospec_obj, (list, dict)):
             joiner = ''
-            wrapped = self.prepare_item(iospec_obj)
+            wrapped = self.prepare(iospec_obj)
         else:
             joiner = '\n'
-            wrapped = self.indent(self.prepare_item(iospec_obj))
+            wrapped = self.indent(self.prepare(iospec_obj))
         
         return joiner.join([start, wrapped, end])
 
