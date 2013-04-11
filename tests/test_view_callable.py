@@ -124,7 +124,6 @@ class TestAuthentication(unittest.TestCase):
         with pytest.raises(self.ViewCallConfirmationError):
             view_callable(None)
 
-@pytest.mark.a
 class TestDefaultViewKwargs(unittest.TestCase):
     """ The class attribute 'default_view_kwargs' is used as default values for
         the 'view_kwargs' value. """
