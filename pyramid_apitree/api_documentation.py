@@ -1,8 +1,15 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+import inspect
 import json
 from iomanager import ListOf
 
 INDENT_STR = '    '
+
+class Error(Exception):
+    """ Base class for errors. """
+
+class PreparationFailureError(Error):
+    """ A value failed to coerce to a string via the 'prepare' method. """
 
 class APIDocumentationView(object):
     @staticmethod
@@ -10,6 +17,19 @@ class APIDocumentationView(object):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
     
     def prepare(self, value):
+        transformations = getattr(self, 'transformations', {})
+        try:
+            transformation = transformations[value]
+        except (KeyError, TypeError):
+            transformation = self.transform
+        
+        if callable(transformation):
+            value = transformation(value)
+        else:
+            value = transformation
+        
+        if inspect.isclass(value):
+            return value.__name__
         if isinstance(value, (list, tuple)):
             return self.prepare_list(value)
         if isinstance(value, dict):
@@ -17,7 +37,16 @@ class APIDocumentationView(object):
         if isinstance(value, ListOf):
             return self.prepare_listof(value)
         
-        return value.__name__
+        if not isinstance(value, basestring):
+            raise PreparationFailureError(
+                "Result must be an 'str' or 'unicode' value; got a {}."
+                .format(type(value).__name__)
+                )
+        
+        return value
+    
+    def transform(self, value):
+        return value
     
     def prepare_list(self, value):
         start, end = '[]'

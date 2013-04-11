@@ -85,7 +85,7 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         
         api_doc_view = CustomAPIDocumentationView()
         
-        assert api_doc_view.prepare(CustomType()) == expected
+        assert api_doc_view.prepare(CustomType) == expected
     
     def test_custom_class_name(self):
         self.transformation_test(self.STRING_RESULT, self.STRING_RESULT)
