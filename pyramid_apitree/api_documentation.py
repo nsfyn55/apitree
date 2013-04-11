@@ -45,9 +45,6 @@ class APIDocumentationView(object):
         
         return value
     
-    def transform(self, value):
-        return value
-    
     def prepare_list(self, value):
         start, end = '[]'
         prepared_lines = map(self.prepare, value)
@@ -77,6 +74,13 @@ class APIDocumentationView(object):
             wrapped = self.indent(self.prepare(iospec_obj))
         
         return joiner.join([start, wrapped, end])
+    
+    def transform(self, value):
+        if hasattr(value, 'iospec'):
+            if callable(value.iospec):
+                return value.iospec()
+            return value.iospec
+        return value
 
 
 
