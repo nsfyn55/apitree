@@ -192,7 +192,6 @@ class TestCreateDocumentation(unittest.TestCase):
     def test_all(self):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
-@pytest.mark.a
 class TestAPIDocumentationMaker(unittest.TestCase):
     """ Confirm that when APIDocumentationMaker initializes, views are correctly
         discovered. """
@@ -228,7 +227,6 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         
         assert missing_location not in result
     
-    @pytest.mark.b
     def test_empty(self):
         self.location_found_test({}, [])
     
@@ -267,6 +265,24 @@ class TestAPIDocumentationMaker(unittest.TestCase):
             )
         
         assert result == {}
+    
+    @pytest.mark.a
+    def test_scan_and_insert(self):
+        """ Test the 'scan_and_insert' classmethod of
+            'APIDocumentationMaker'. """
+        class CustomAPIViewCallable(APIViewCallable):
+            pass
+        
+        api_tree = {'/view': self.make_view_callable()}
+        
+        APIDocumentationMaker.scan_and_insert(
+            api_tree,
+            '/apidoc',
+            CustomAPIViewCallable,
+            )
+        
+        result = api_tree['/apidoc'][0]
+        assert isinstance(result, CustomAPIViewCallable)
 
 
 
