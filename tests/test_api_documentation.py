@@ -281,7 +281,7 @@ class TestAPIDocumentationMaker(unittest.TestCase):
             CustomAPIViewCallable,
             )
         
-        result = api_tree['/apidoc'][0]
+        result = api_tree['/apidoc']['GET']
         assert isinstance(result, CustomAPIViewCallable)
 
 

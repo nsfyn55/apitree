@@ -138,6 +138,13 @@ class APIDocumentationMaker(object):
                 result[path] = path_methods
         
         return result
+    
+    @classmethod
+    def scan_and_insert(cls, api_tree, path, view_class, **kwargs):
+        documentation_callable = cls(api_tree)
+        view_callable = view_class(documentation_callable, **kwargs)
+        api_tree.setdefault(path, {})
+        api_tree[path]['GET'] = view_callable
 
 
 
