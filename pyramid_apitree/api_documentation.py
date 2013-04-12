@@ -2,6 +2,12 @@
 import inspect
 import json
 from iomanager import ListOf
+from iomanager.iomanager import NotProvided
+
+from .tree_scan import (
+    ALL_REQUEST_METHODS,
+    get_endpoints,
+    )
 
 INDENT_STR = '    '
 
@@ -81,6 +87,45 @@ class APIDocumentationView(object):
                 return value.iospec()
             return value.iospec
         return value
+    
+    def create_documentation(self, api_tree):
+        endpoints = get_endpoints(api_tree)
+        
+        result = {}
+        for path, endpoint_list in endpoints.iteritems():
+            path_methods = {}
+            for item in endpoint_list:
+                request_methods = item.get(
+                    'request_method',
+                    ALL_REQUEST_METHODS,
+                    )
+                method_key = ', '.join(request_methods)
+                
+                view_callable = item['view']
+                description = (
+                    view_callable.__doc__ or 'No description provided.'
+                    )
+                
+                manager = view_callable.manager
+                iospecs = {
+                    'required': manager.input_processor.required,
+                    'optional': manager.input_processor.optional,
+                    'returns': manager.output_processor.required,
+                    }
+                if manager.input_processor.unlimited:
+                    iospecs['unlimited'] = manager.input_processor.unlimited
+                method_dict = {
+                    ikey: ivalue for ikey, ivalue in iospecs.iteritems()
+                    if ivalue is not NotProvided and ivalue != {}
+                    }
+                
+                method_dict['description'] = description
+                
+                path_methods[method_key] = method_dict
+            
+            result[path] = path_methods
+        
+        return result
 
 
 

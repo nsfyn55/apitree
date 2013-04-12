@@ -13,8 +13,6 @@ from pyramid_apitree.api_documentation import (
     PreparationFailureError,
     )
 
-pytestmark = pytest.mark.a
-
 def prep_json(s, n=0, **kwargs):
     kwargs.setdefault('indent', 4)
     json_s = json.dumps(s, **kwargs).replace("'", '').replace('"', '')
@@ -106,7 +104,6 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         with pytest.raises(PreparationFailureError):
             self.transformation_test(transform_custom)
     
-    @pytest.mark.b
     def test_default_transform(self):
         """ Default 'transform' method should call 'iospec' method of item being
             prepared. """
@@ -130,7 +127,6 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         
         assert api_doc_view.prepare(object) == string_result
     
-    @pytest.mark.c
     def test_transform_container_result(self):
         """ When a transformation function or 'transform' method returns a
             container, that container should also be passed to 'prepare'. """
@@ -154,8 +150,7 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         
         assert result == expected
 
-@pytest.mark.b
-class TestCreateDocumentationItems(unittest.TestCase):
+class TestCreateDocumentation(unittest.TestCase):
     """ When 'APIDocumentationView' processes an 'api_tree' dictionary, confirm
         that each view callable's attributes are correctly included. """
     
@@ -182,7 +177,6 @@ class TestCreateDocumentationItems(unittest.TestCase):
         
         assert set(keys) == set(view_dict.keys())
     
-    @pytest.mark.c
     def test_required(self):
         self.view_test('required')
     
@@ -199,7 +193,9 @@ class TestCreateDocumentationItems(unittest.TestCase):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
 @pytest.mark.a
-class TestCreateDocumentation(unittest.TestCase):
+class TestAPIDocumentationView(unittest.TestCase):
+    """ Confirm that when APIDocumentationView initializes, views are correctly
+        discovered. """
     def make_view_callable(self):
         @api_view
         def view_callable(**kwargs):
@@ -230,6 +226,7 @@ class TestCreateDocumentation(unittest.TestCase):
         
         assert missing_location not in result
     
+    @pytest.mark.b
     def test_empty(self):
         self.location_found_test({}, [])
     
