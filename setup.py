@@ -12,6 +12,6 @@ setup(
     description=('Unstable beta release.'),
     long_description=open('README.md').read(),
     install_requires=[
-        'iomanager>=0.3.2',
+        'iomanager>=0.3.4',
         ],
     )

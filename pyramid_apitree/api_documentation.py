@@ -21,7 +21,7 @@ class APIDocumentationMaker(object):
     def __init__(self, api_tree={}):
         self.documentation_tree = self.create_documentation(api_tree)
     
-    def __call(self, request):
+    def __call__(self, request):
         return self.documentation_tree
     
     @staticmethod
@@ -97,6 +97,8 @@ class APIDocumentationMaker(object):
     def create_documentation(self, api_tree):
         endpoints = get_endpoints(api_tree)
         
+        types_to_skip = getattr(self, 'types_to_skip', [])
+        
         result = {}
         for path, endpoint_list in endpoints.iteritems():
             path_methods = {}
@@ -108,6 +110,9 @@ class APIDocumentationMaker(object):
                 method_key = ', '.join(request_methods)
                 
                 view_callable = item['view']
+                if type(view_callable) in types_to_skip:
+                    continue
+                
                 description = (
                     view_callable.__doc__ or 'No description provided.'
                     )
@@ -129,7 +134,8 @@ class APIDocumentationMaker(object):
                 
                 path_methods[method_key] = method_dict
             
-            result[path] = path_methods
+            if path_methods:
+                result[path] = path_methods
         
         return result
 
