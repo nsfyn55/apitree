@@ -4,7 +4,10 @@ import pytest
 from webob import Request
 
 from iomanager import ListOf
-from pyramid_apitree import api_view
+from pyramid_apitree import (
+    APIViewCallable,
+    api_view,
+    )
 from pyramid_apitree.api_documentation import (
     APIDocumentationView,
     PreparationFailureError,
@@ -150,6 +153,121 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         expected = api_doc_view.prepare(container_result.copy())
         
         assert result == expected
+
+@pytest.mark.b
+class TestCreateDocumentationItems(unittest.TestCase):
+    """ When 'APIDocumentationView' processes an 'api_tree' dictionary, confirm
+        that each view callable's attributes are correctly included. """
+    
+    def view_test(self, *keys):
+        decorator_values = {
+            'required': object,
+            'optional': object,
+            'unlimited': True,
+            'returns': object,
+            }
+        decorator_kwargs = {ikey: decorator_values[ikey] for ikey in keys}
+        
+        @api_view(**decorator_kwargs)
+        def view_callable(**kwargs):
+            pass
+        
+        api_tree = {'/': {'GET': view_callable}}
+        
+        documentation = APIDocumentationView().create_documentation(api_tree)
+        
+        view_dict = documentation['/']['GET']
+        
+        view_dict.pop('description', None)
+        
+        assert set(keys) == set(view_dict.keys())
+    
+    @pytest.mark.c
+    def test_required(self):
+        self.view_test('required')
+    
+    def test_optional(self):
+        self.view_test('optional')
+    
+    def test_unlimited(self):
+        self.view_test('unlimited')
+    
+    def test_returns(self):
+        self.view_test('returns')
+    
+    def test_all(self):
+        self.view_test('required', 'optional', 'unlimited', 'returns')
+
+@pytest.mark.a
+class TestCreateDocumentation(unittest.TestCase):
+    def make_view_callable(self):
+        @api_view
+        def view_callable(**kwargs):
+            pass
+    
+    def get_documentation_tree_result(
+        self,
+        api_tree,
+        api_doc_view_class=APIDocumentationView
+        ):
+        api_doc_view = api_doc_view_class(api_tree)
+        
+        result = api_doc_view.documentation_tree
+    
+    def location_found_test(self, api_tree, location):
+        result = self.get_documentation_tree_result(api_tree)
+        for ikey in location:
+            # Confirm that the expected location is included in the result.
+            assert ikey in result
+            result = result[ikey]
+        # End of test.
+    
+    def location_missing_test(self, api_tree, location):
+        missing_location = location.pop(-1)
+        result = self.get_documentation_tree_result(api_tree)
+        for ikey in location:
+            result = result[ikey]
+        
+        assert missing_location not in result
+    
+    def test_empty(self):
+        self.location_found_test({}, [])
+    
+    def request_method_test(self, request_methods):
+        api_tree = {
+            '/': {request_methods: self.make_view_callable()}
+            }
+        request_methods_string = ', '.join(request_methods)
+        
+        self.location_found_test(api_tree, ['/', request_method_string])
+    
+    def test_single_request_method(self):
+        self.request_method_test(['GET'])
+    
+    def test_multiple_request_methods(self):
+        self.request_method_test(['GET', 'POST'])
+    
+    def test_types_to_skip(self):
+        class CustomViewCallable(APIViewCallable):
+            pass
+        
+        class CustomAPIDocumentationView(APIDocumentationView):
+            types_to_skip = [CustomViewCallable]
+        
+        @CustomViewCallable
+        def trial_view():
+            pass
+        
+        api_tree = {
+            '/': trial_view
+            }
+        
+        result = self.get_documentation_tree_result(
+            api_tree,
+            api_doc_view_class=CustomAPIDocumentationView,
+            )
+        
+        assert result == {}
 
 
 
