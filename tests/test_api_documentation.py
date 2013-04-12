@@ -9,7 +9,7 @@ from pyramid_apitree import (
     api_view,
     )
 from pyramid_apitree.api_documentation import (
-    APIDocumentationView,
+    APIDocumentationMaker,
     PreparationFailureError,
     )
 
@@ -22,7 +22,7 @@ class TestPrepareItem(unittest.TestCase):
     """ Test the function which prepares the API documentation result by
         converting class objects to name-strings. """
     def setUp(self):
-        self.apidoc_view = APIDocumentationView()
+        self.apidoc_view = APIDocumentationMaker()
     
     def test_custom_class(self):
         class CustomClass(object):
@@ -78,12 +78,12 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         class CustomType(object):
             pass
         
-        class CustomAPIDocumentationView(APIDocumentationView):
+        class CustomAPIDocumentationMaker(APIDocumentationMaker):
             transformations = {
                 CustomType: transformation_obj,
                 }
         
-        api_doc_view = CustomAPIDocumentationView()
+        api_doc_view = CustomAPIDocumentationMaker()
         
         assert api_doc_view.prepare(CustomType) == expected
     
@@ -113,17 +113,17 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
             def iospec(cls):
                 return string_result
         
-        api_doc_view = APIDocumentationView()
+        api_doc_view = APIDocumentationMaker()
         
         assert api_doc_view.prepare(CustomType) == string_result
     
     def test_custom_transform(self):
         string_result = self.STRING_RESULT
-        class CustomAPIDocumentationView(APIDocumentationView):
+        class CustomAPIDocumentationMaker(APIDocumentationMaker):
             def transform(self, value):
                 return string_result
         
-        api_doc_view = CustomAPIDocumentationView()
+        api_doc_view = CustomAPIDocumentationMaker()
         
         assert api_doc_view.prepare(object) == string_result
     
@@ -138,12 +138,12 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         def transform_function(value):
             return container_result.copy()
         
-        class CustomAPIDocumentationView(APIDocumentationView):
+        class CustomAPIDocumentationMaker(APIDocumentationMaker):
             transformations = {
                 CustomType: transform_function
                 }
         
-        api_doc_view = CustomAPIDocumentationView()
+        api_doc_view = CustomAPIDocumentationMaker()
         
         result = api_doc_view.prepare(CustomType)
         expected = api_doc_view.prepare(container_result.copy())
@@ -151,7 +151,7 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         assert result == expected
 
 class TestCreateDocumentation(unittest.TestCase):
-    """ When 'APIDocumentationView' processes an 'api_tree' dictionary, confirm
+    """ When 'APIDocumentationMaker' processes an 'api_tree' dictionary, confirm
         that each view callable's attributes are correctly included. """
     
     def view_test(self, *keys):
@@ -169,7 +169,7 @@ class TestCreateDocumentation(unittest.TestCase):
         
         api_tree = {'/': {'GET': view_callable}}
         
-        documentation = APIDocumentationView().create_documentation(api_tree)
+        documentation = APIDocumentationMaker().create_documentation(api_tree)
         
         view_dict = documentation['/']['GET']
         
@@ -193,22 +193,24 @@ class TestCreateDocumentation(unittest.TestCase):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
 @pytest.mark.a
-class TestAPIDocumentationView(unittest.TestCase):
-    """ Confirm that when APIDocumentationView initializes, views are correctly
+class TestAPIDocumentationMaker(unittest.TestCase):
+    """ Confirm that when APIDocumentationMaker initializes, views are correctly
         discovered. """
     def make_view_callable(self):
         @api_view
         def view_callable(**kwargs):
             pass
+        
+        return view_callable
     
     def get_documentation_tree_result(
         self,
         api_tree,
-        api_doc_view_class=APIDocumentationView
+        api_doc_view_class=APIDocumentationMaker
         ):
         api_doc_view = api_doc_view_class(api_tree)
         
-        result = api_doc_view.documentation_tree
+        return api_doc_view.documentation_tree
     
     def location_found_test(self, api_tree, location):
         result = self.get_documentation_tree_result(api_tree)
@@ -236,19 +238,19 @@ class TestAPIDocumentationView(unittest.TestCase):
             }
         request_methods_string = ', '.join(request_methods)
         
-        self.location_found_test(api_tree, ['/', request_method_string])
+        self.location_found_test(api_tree, ['/', request_methods_string])
     
     def test_single_request_method(self):
-        self.request_method_test(['GET'])
+        self.request_method_test(('GET',))
     
     def test_multiple_request_methods(self):
-        self.request_method_test(['GET', 'POST'])
+        self.request_method_test(('GET', 'POST'))
     
     def test_types_to_skip(self):
         class CustomViewCallable(APIViewCallable):
             pass
         
-        class CustomAPIDocumentationView(APIDocumentationView):
+        class CustomAPIDocumentationMaker(APIDocumentationMaker):
             types_to_skip = [CustomViewCallable]
         
         @CustomViewCallable
@@ -261,7 +263,7 @@ class TestAPIDocumentationView(unittest.TestCase):
         
         result = self.get_documentation_tree_result(
             api_tree,
-            api_doc_view_class=CustomAPIDocumentationView,
+            api_doc_view_class=CustomAPIDocumentationMaker,
             )
         
         assert result == {}

@@ -1,6 +1,6 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
-from api_documentation import APIDocumentationView
+from api_documentation import APIDocumentationMaker
 from tree_scan import scan_api_tree
 from view_callable import (
     BaseViewCallable,

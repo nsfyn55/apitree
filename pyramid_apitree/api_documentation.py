@@ -17,7 +17,13 @@ class Error(Exception):
 class PreparationFailureError(Error):
     """ A value failed to coerce to a string via the 'prepare' method. """
 
-class APIDocumentationView(object):
+class APIDocumentationMaker(object):
+    def __init__(self, api_tree={}):
+        self.documentation_tree = self.create_documentation(api_tree)
+    
+    def __call(self, request):
+        return self.documentation_tree
+    
     @staticmethod
     def indent(s):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
