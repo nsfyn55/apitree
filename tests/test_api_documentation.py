@@ -71,84 +71,21 @@ class TestPrepareItem(unittest.TestCase):
         result = self.apidoc_view.prepare(ListOf({'a': object}))
         assert result == expected
 
+@pytest.mark.a
 class TestPrepareItemCustomClassName(unittest.TestCase):
-    STRING_RESULT = u'abcxyz'
-    
-    def transformation_test(self, transformation_obj, expected=None):
+    def test_display_name(self):
+        expected = u'abcxyz'
         class CustomType(object):
             pass
         
         class CustomAPIDocumentationMaker(APIDocumentationMaker):
-            transformations = {
-                CustomType: transformation_obj,
+            display_names = {
+                CustomType: expected
                 }
         
         api_doc_view = CustomAPIDocumentationMaker()
         
         assert api_doc_view.prepare(CustomType) == expected
-    
-    def test_custom_class_name(self):
-        self.transformation_test(self.STRING_RESULT, self.STRING_RESULT)
-    
-    def test_custom_function(self):
-        def transform_custom(value):
-            return self.STRING_RESULT
-        
-        self.transformation_test(transform_custom, self.STRING_RESULT)
-    
-    def test_custom_function_failure(self):
-        """ Custom transformation function fails to produce a string result. """
-        def transform_custom(value):
-            return object()
-        
-        with pytest.raises(PreparationFailureError):
-            self.transformation_test(transform_custom)
-    
-    def test_default_transform(self):
-        """ Default 'transform' method should call 'iospec' method of item being
-            prepared. """
-        string_result = self.STRING_RESULT
-        class CustomType(object):
-            @classmethod
-            def iospec(cls):
-                return string_result
-        
-        api_doc_view = APIDocumentationMaker()
-        
-        assert api_doc_view.prepare(CustomType) == string_result
-    
-    def test_custom_transform(self):
-        string_result = self.STRING_RESULT
-        class CustomAPIDocumentationMaker(APIDocumentationMaker):
-            def transform(self, value):
-                return string_result
-        
-        api_doc_view = CustomAPIDocumentationMaker()
-        
-        assert api_doc_view.prepare(object) == string_result
-    
-    def test_transform_container_result(self):
-        """ When a transformation function or 'transform' method returns a
-            container, that container should also be passed to 'prepare'. """
-        container_result = {'a': object}
-        
-        class CustomType(object):
-            pass
-        
-        def transform_function(value):
-            return container_result.copy()
-        
-        class CustomAPIDocumentationMaker(APIDocumentationMaker):
-            transformations = {
-                CustomType: transform_function
-                }
-        
-        api_doc_view = CustomAPIDocumentationMaker()
-        
-        result = api_doc_view.prepare(CustomType)
-        expected = api_doc_view.prepare(container_result.copy())
-        
-        assert result == expected
 
 class TestCreateDocumentation(unittest.TestCase):
     """ When 'APIDocumentationMaker' processes an 'api_tree' dictionary, confirm
