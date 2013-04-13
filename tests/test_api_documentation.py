@@ -71,7 +71,6 @@ class TestPrepareItem(unittest.TestCase):
         result = self.apidoc_view.prepare(ListOf({'a': object}))
         assert result == expected
 
-@pytest.mark.a
 class TestPrepareItemCustomClassName(unittest.TestCase):
     def test_display_name(self):
         expected = u'abcxyz'
@@ -203,7 +202,6 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         
         assert result == {}
     
-    @pytest.mark.a
     def test_scan_and_insert(self):
         """ Test the 'scan_and_insert' classmethod of
             'APIDocumentationMaker'. """

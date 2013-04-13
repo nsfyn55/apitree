@@ -29,19 +29,6 @@ class APIDocumentationMaker(object):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
     
     def prepare(self, value):
-        transformations = getattr(self, 'transformations', {})
-        try:
-            transformation = transformations[value]
-        except (KeyError, TypeError):
-            transformation = self.transform
-        
-        if callable(transformation):
-            value = transformation(value)
-        else:
-            value = transformation
-        
-        if inspect.isclass(value):
-            return value.__name__
         if isinstance(value, (list, tuple)):
             return self.prepare_list(value)
         if isinstance(value, dict):
@@ -49,13 +36,11 @@ class APIDocumentationMaker(object):
         if isinstance(value, ListOf):
             return self.prepare_listof(value)
         
-        if not isinstance(value, basestring):
-            raise PreparationFailureError(
-                "Result must be an 'str' or 'unicode' value; got a {}."
-                .format(type(value).__name__)
-                )
-        
-        return value
+        display_names = getattr(self, 'display_names', {})
+        try:
+            return display_names[value]
+        except KeyError:
+            return value.__name__
     
     def prepare_list(self, value):
         start, end = '[]'
@@ -86,13 +71,6 @@ class APIDocumentationMaker(object):
             wrapped = self.indent(self.prepare(iospec_obj))
         
         return joiner.join([start, wrapped, end])
-    
-    def transform(self, value):
-        if hasattr(value, 'iospec'):
-            if callable(value.iospec):
-                return value.iospec()
-            return value.iospec
-        return value
     
     def create_documentation(self, api_tree):
         endpoints = get_endpoints(api_tree)
