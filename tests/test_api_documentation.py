@@ -163,17 +163,17 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         
         return view_callable
     
-    def get_documentation_tree_result(
+    def get_documentation_dict_result(
         self,
         api_tree,
         api_doc_view_class=APIDocumentationMaker
         ):
         api_doc_view = api_doc_view_class(api_tree)
         
-        return api_doc_view.documentation_tree
+        return api_doc_view.documentation_dict
     
     def location_found_test(self, api_tree, location):
-        result = self.get_documentation_tree_result(api_tree)
+        result = self.get_documentation_dict_result(api_tree)
         for ikey in location:
             # Confirm that the expected location is included in the result.
             assert ikey in result
@@ -182,7 +182,7 @@ class TestAPIDocumentationMaker(unittest.TestCase):
     
     def location_missing_test(self, api_tree, location):
         missing_location = location.pop(-1)
-        result = self.get_documentation_tree_result(api_tree)
+        result = self.get_documentation_dict_result(api_tree)
         for ikey in location:
             result = result[ikey]
         
@@ -220,7 +220,7 @@ class TestAPIDocumentationMaker(unittest.TestCase):
             '/': trial_view
             }
         
-        result = self.get_documentation_tree_result(
+        result = self.get_documentation_dict_result(
             api_tree,
             api_doc_view_class=CustomAPIDocumentationMaker,
             )

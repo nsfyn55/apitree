@@ -19,10 +19,10 @@ class PreparationFailureError(Error):
 
 class APIDocumentationMaker(object):
     def __init__(self, api_tree={}):
-        self.documentation_tree = self.create_documentation(api_tree)
+        self.documentation_dict = self.create_documentation(api_tree)
     
     def __call__(self, request):
-        return self.documentation_tree
+        return self.documentation_dict
     
     @staticmethod
     def indent(s):
@@ -94,7 +94,7 @@ class APIDocumentationMaker(object):
                 method_dict = {}
                 
                 method_dict['description'] = (
-                    view_callable.__doc__ or 'No description provided.'
+                    view_callable.wrapped.__doc__ or 'No description provided.'
                     )
                 
                 if hasattr(view_callable, 'manager'):
