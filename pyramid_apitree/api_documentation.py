@@ -1,6 +1,7 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 import inspect
 import json
+import os.path
 from mako.template import Template
 from iomanager import ListOf
 from iomanager.iomanager import NotProvided
@@ -22,9 +23,16 @@ class PreparationFailureError(Error):
 class APIDocumentationMaker(object):
     def __init__(self, api_tree={}):
         self.documentation_dict = self.create_documentation(api_tree)
-        self.documentation_html = (
-            Template(api_documentation_template)
-            .render(doc=self.documentation_dict)
+        
+        template_filename = os.path.join(
+            os.path.dirname(__file__),
+            'api_doc_template.mak',
+            )
+        
+        self.documentation_html = Template(
+            filename=template_filename,
+            ).render(
+            documentation_dict=self.documentation_dict
             )
     
     def __call__(self, request):
@@ -148,12 +156,6 @@ class APIDocumentationMaker(object):
             )
         api_tree.setdefault(path, {})
         api_tree[path]['GET'] = view_callable
-
-api_documentation_template = """\
-<pre>
-${doc}
-</pre>
-"""
 
 
 
