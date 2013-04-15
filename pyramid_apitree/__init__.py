@@ -1,9 +1,15 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
-from api_documentation import APIDocumentationView
+from api_documentation import APIDocumentationMaker
 from tree_scan import scan_api_tree
 from view_callable import (
-    SimpleViewCallable as simple_view,
-    FunctionViewCallable as function_view,
-    APIViewCallable as api_view,
+    BaseViewCallable,
+    SimpleViewCallable,
+    FunctionViewCallable,
+    APIViewCallable,
     )
+
+# Lowercase decorator names - an aesthetic choice.
+simple_view = SimpleViewCallable
+function_view = FunctionViewCallable
+api_view = APIViewCallable

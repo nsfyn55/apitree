@@ -87,6 +87,11 @@ class ScanTest(unittest.TestCase):
         """ Another dummy 'view_callable' object. """
     
     def endpoint_test(self, path, **expected_view_dict):
+        if 'request_method' in expected_view_dict:
+            if not isinstance(expected_view_dict['request_method'], tuple):
+                expected_view_dict['request_method'] = \
+                    tuple([expected_view_dict['request_method']])
+        
         expected_view_dict['view_callable'] = self.target
         
         request_methods = make_request_methods_tuple(

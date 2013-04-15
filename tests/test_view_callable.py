@@ -62,6 +62,111 @@ class TestBaseViewCallable(unittest.TestCase):
         with pytest.raises(TypeError):
             BaseViewCallable(not_callable)
 
+class TestAuthentication(unittest.TestCase):
+    """ 'authenticate' has acces to the request object through 'self.request'.
+        
+        'authenticate' is called before 'view_call'. """
+    
+    class AuthenticationConfirmationError(Error):
+        pass
+    
+    class ViewCallConfirmationError(Error):
+        pass
+    
+    def make_view_callable(self, auth_routine, view_call_routine):
+        class AuthenticatedViewCallable(BaseViewCallable):
+            def authenticate(self):
+                auth_routine(self)
+            
+            def view_call(self):
+                view_call_routine()
+        
+        @AuthenticatedViewCallable
+        def view_callable():
+            pass
+        
+        return view_callable
+    
+    def test_authenticate_has_access_to_request(self):
+        request_obj = object()
+        
+        def auth_routine(view_self):
+            assert view_self.request == request_obj
+        
+        def view_call_routine():
+            pass
+        
+        view_callable = self.make_view_callable(auth_routine, view_call_routine)
+        
+        view_callable(request_obj)
+    
+    def test_authenticate_before_view_call(self):
+        def auth_routine(view_self):
+            raise self.AuthenticationConfirmationError
+        
+        def view_call_routine():
+            raise self.ViewCallConfirmationError
+        
+        view_callable = self.make_view_callable(auth_routine, view_call_routine)
+        
+        with pytest.raises(self.AuthenticationConfirmationError):
+            view_callable(None)
+    
+    def test_no_authentication(self):
+        def auth_routine(view_self):
+            pass
+        
+        def view_call_routine():
+            raise self.ViewCallConfirmationError
+        
+        view_callable = self.make_view_callable(auth_routine, view_call_routine)
+        
+        with pytest.raises(self.ViewCallConfirmationError):
+            view_callable(None)
+
+class TestDefaultViewKwargs(unittest.TestCase):
+    """ The class attribute 'default_view_kwargs' is used as default values for
+        the 'view_kwargs' value. """
+    def test_defaults(self):
+        expected = object()
+        
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {'predicate': expected}
+        
+        @CustomViewCallable
+        def view_callable():
+            pass
+        
+        assert view_callable.view_kwargs['predicate'] == expected
+    
+    def test_decorator_overrides_defaults(self):
+        """ 'view_kwags' provided to the decorator override defaults. """
+        expected = object()
+        
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {'predicate': object()}
+        
+        @CustomViewCallable(predicate=expected)
+        def view_callable():
+            pass
+        
+        assert view_callable.view_kwargs['predicate'] == expected
+    
+    def test_class_dict_is_copied(self):
+        """ The 'default_view_kwargs' dict must be copied so that it is not
+            mutated when the view callable class is instantiated. """
+        class CustomViewCallable(BaseViewCallable):
+            default_view_kwargs = {}
+        
+        @CustomViewCallable
+        def view_callable():
+            pass
+        
+        assert (
+            view_callable.view_kwargs is not
+            CustomViewCallable.default_view_kwargs
+            )
+
 class BasicBehaviorTest(object):
     """ For all view callable classes, confirm some common behaviors. """
     
@@ -230,7 +335,7 @@ class TestFunctionViewCallableKwargsSources(unittest.TestCase):
         method_kwargs = expected_kwargs.copy()
         
         class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
-            def special_kwargs(self, request):
+            def special_kwargs(self):
                 return method_kwargs
         
         @SpecialKwargsFunctionViewCallable
@@ -292,7 +397,7 @@ class TestFunctionViewCallableKwargsSourcesPrecedence(unittest.TestCase):
         expected_value = object()
         
         class SpecialKwargsFunctionViewCallable(FunctionViewCallable):
-            def special_kwargs(self, request):
+            def special_kwargs(self):
                 return {'a': expected_value}
         
         request = self.make_request('matchdict', 'GET', request_body_source)
