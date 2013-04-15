@@ -6,6 +6,8 @@ from webob import Request
 from iomanager import ListOf
 from pyramid_apitree import (
     APIViewCallable,
+    simple_view,
+    function_view,
     api_view,
     )
 from pyramid_apitree.api_documentation import (
@@ -86,7 +88,7 @@ class TestPrepareItemCustomClassName(unittest.TestCase):
         
         assert api_doc_view.prepare(CustomType) == expected
 
-class TestCreateDocumentation(unittest.TestCase):
+class TestCreateDocumentationViewAttributes(unittest.TestCase):
     """ When 'APIDocumentationMaker' processes an 'api_tree' dictionary, confirm
         that each view callable's attributes are correctly included. """
     
@@ -127,6 +129,31 @@ class TestCreateDocumentation(unittest.TestCase):
     
     def test_all(self):
         self.view_test('required', 'optional', 'unlimited', 'returns')
+
+@pytest.mark.a
+class TestCreateDocumentationViewCallables(unittest.TestCase):
+    """ Confirm that 'create_documentation' is able to handle view callables of
+        every type included in 'pyramid_apitree', without raising any
+        errors. """
+    
+    def view_callable_test(self, view_callable_class):
+        @view_callable_class
+        def view_callable():
+            pass
+        
+        api_tree = {'/': view_callable}
+        
+        APIDocumentationMaker().create_documentation(api_tree)
+    
+    @pytest.mark.b
+    def test_simple_view(self):
+        self.view_callable_test(simple_view)
+    
+    def test_function_view(self):
+        self.view_callable_test(function_view)
+    
+    def test_api_view(self):
+        self.view_callable_test(api_view)
 
 class TestAPIDocumentationMaker(unittest.TestCase):
     """ Confirm that when APIDocumentationMaker initializes, views are correctly
