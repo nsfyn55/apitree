@@ -99,19 +99,25 @@ class APIDocumentationMaker(object):
                 
                 if hasattr(view_callable, 'manager'):
                     manager = view_callable.manager
-                    iospecs = {
+                    
+                    raw_iospecs = {
                         'required': manager.input_processor.required,
                         'optional': manager.input_processor.optional,
                         'returns': manager.output_processor.required,
                         }
-                    if manager.input_processor.unlimited:
-                        iospecs['unlimited'] = manager.input_processor.unlimited
-                    method_dict .update({
-                        ikey: ivalue for ikey, ivalue in iospecs.iteritems()
+                    
+                    prepared_iospecs = {
+                        ikey: self.prepare(ivalue)
+                        for ikey, ivalue in raw_iospecs.iteritems()
                         if ivalue is not NotProvided and ivalue != {}
-                        })
-                
-                #method_dict['description'] = description
+                        }
+                    
+                    if manager.input_processor.unlimited:
+                        prepared_iospecs['unlimited'] = (
+                            manager.input_processor.unlimited
+                            )
+                    
+                    method_dict.update(prepared_iospecs)
                 
                 path_methods[method_key] = method_dict
             
