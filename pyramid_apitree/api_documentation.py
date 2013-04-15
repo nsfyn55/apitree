@@ -21,8 +21,9 @@ class PreparationFailureError(Error):
     """ A value failed to coerce to a string via the 'prepare' method. """
 
 class APIDocumentationMaker(object):
-    def __init__(self, api_tree={}):
+    def __init__(self, api_tree={}, title='API Documentation'):
         self.documentation_dict = self.create_documentation(api_tree)
+        self.documentation_title = title
         
         template_filename = os.path.join(
             os.path.dirname(__file__),
@@ -32,7 +33,8 @@ class APIDocumentationMaker(object):
         self.documentation_html = Template(
             filename=template_filename,
             ).render(
-            documentation_dict=self.documentation_dict
+            documentation_dict=self.documentation_dict,
+            documentation_title = self.documentation_title,
             )
     
     def __call__(self, request):

@@ -1,7 +1,9 @@
 <%
     plus_icon = "https://github.com/openmicroscopy/openmicroscopy/diff_blob/55ef9e4acc887a5d2b13e62ffb1e766d608f6dbe/components/tools/OmeroWeb/omeroweb/webtest/media/img/panojs/16px_plus.png?raw=true"
     minus_icon = "https://github.com/openmicroscopy/openmicroscopy/diff_blob/55ef9e4acc887a5d2b13e62ffb1e766d608f6dbe/components/tools/OmeroWeb/omeroweb/webtest/media/img/panojs/16px_minus.png?raw=true"
-    item_icon = "https://github.com/rflynn/jquery-pong/diff_blob/dfd603e03b2e06a97b0a76e83e529c1ac9221b20/circle.gif?raw=true"
+    
+    sorted_paths = sorted(documentation_dict.iterkeys())
+    endpoint_order = ('description', 'required', 'optional', 'unlimited', 'returns')
 %>
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -9,7 +11,7 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     
-    <title>API Documentation</title>
+    <title>${documentation_title}</title>
     <style type="text/css">
         *, html { font-family: Verdana, Arial, Helvetica, sans-serif; }
         
@@ -43,15 +45,13 @@
                 margin-left: -15px;
                 list-style: none;
             }
-            li.file
+            li.item
             {
                 margin-left: -1px !important;
             }
-                li.file a
+                li.item a
                 {
-                    background: url(${item_icon}) 0 0 no-repeat;
                     color: #fff;
-                    padding-left: 21px;
                     text-decoration: none;
                     display: block;
                 }
@@ -96,19 +96,25 @@
 <body>
     
     <ol class="tree">
+        % for path, methods_dict in [(path, documentation_dict[path]) for path in sorted_paths]:
         <li>
-            <label for="some/path">/some/path</label> <input type="checkbox" id="/some/path" />
+            <label for="${path}">${path}</label> <input type="checkbox" id="${path}" />
             <ol>
+                % for method, endpoint_dict in methods_dict.iteritems():
+                <% path_method = '-'.join([path, method]) %>
                 <li>
-                    <label for="some/path-METHOD">METHOD</label> <input type="checkbox" id="/some/path-METHOD" />
+                    <label for="${path_method}">${method}</label> <input type="checkbox" id=${path_method} />
                     <ol>
-                        <li class="file"><a>Description: xxx</a></li>
-                        <li class="file"><a>Requires: xxx</a></li>
-                        <li class="file"><a>Optional: xxx</a></li>
+                        % for name, value in [(ikey, endpoint_dict[ikey]) for ikey in endpoint_order if ikey in endpoint_dict]:
+                        <% caption = name.capitalize() + ':' %>
+                        <li class="item"><a>${caption}</a><a>${value}</a></li>
+                        % endfor
                     </ol>
                 </li>
+                % endfor
             </ol>
         </li>
+        % endfor
     </ol>
     
 </body>
