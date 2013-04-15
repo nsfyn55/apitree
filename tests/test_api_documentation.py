@@ -130,7 +130,6 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
     def test_all(self):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
-@pytest.mark.a
 class TestCreateDocumentationViewCallables(unittest.TestCase):
     """ Confirm that 'create_documentation' is able to handle view callables of
         every type included in 'pyramid_apitree', without raising any
@@ -145,7 +144,6 @@ class TestCreateDocumentationViewCallables(unittest.TestCase):
         
         APIDocumentationMaker().create_documentation(api_tree)
     
-    @pytest.mark.b
     def test_simple_view(self):
         self.view_callable_test(simple_view)
     

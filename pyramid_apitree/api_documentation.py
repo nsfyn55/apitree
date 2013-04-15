@@ -91,24 +91,27 @@ class APIDocumentationMaker(object):
                 if type(view_callable) in types_to_skip:
                     continue
                 
-                description = (
+                method_dict = {}
+                
+                method_dict['description'] = (
                     view_callable.__doc__ or 'No description provided.'
                     )
                 
-                manager = view_callable.manager
-                iospecs = {
-                    'required': manager.input_processor.required,
-                    'optional': manager.input_processor.optional,
-                    'returns': manager.output_processor.required,
-                    }
-                if manager.input_processor.unlimited:
-                    iospecs['unlimited'] = manager.input_processor.unlimited
-                method_dict = {
-                    ikey: ivalue for ikey, ivalue in iospecs.iteritems()
-                    if ivalue is not NotProvided and ivalue != {}
-                    }
+                if hasattr(view_callable, 'manager'):
+                    manager = view_callable.manager
+                    iospecs = {
+                        'required': manager.input_processor.required,
+                        'optional': manager.input_processor.optional,
+                        'returns': manager.output_processor.required,
+                        }
+                    if manager.input_processor.unlimited:
+                        iospecs['unlimited'] = manager.input_processor.unlimited
+                    method_dict .update({
+                        ikey: ivalue for ikey, ivalue in iospecs.iteritems()
+                        if ivalue is not NotProvided and ivalue != {}
+                        })
                 
-                method_dict['description'] = description
+                #method_dict['description'] = description
                 
                 path_methods[method_key] = method_dict
             
