@@ -1,9 +1,11 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 import inspect
 import json
+from mako.template import Template
 from iomanager import ListOf
 from iomanager.iomanager import NotProvided
 
+from .view_callable import SimpleViewCallable
 from .tree_scan import (
     ALL_REQUEST_METHODS,
     get_endpoints,
@@ -20,9 +22,13 @@ class PreparationFailureError(Error):
 class APIDocumentationMaker(object):
     def __init__(self, api_tree={}):
         self.documentation_dict = self.create_documentation(api_tree)
+        self.documentation_html = (
+            Template(api_documentation_template)
+            .render(doc=self.documentation_dict)
+            )
     
     def __call__(self, request):
-        return self.documentation_dict
+        return self.documentation_html
     
     @staticmethod
     def indent(s):
@@ -127,11 +133,27 @@ class APIDocumentationMaker(object):
         return result
     
     @classmethod
-    def scan_and_insert(cls, api_tree, path, view_class, **kwargs):
+    def scan_and_insert(
+        cls,
+        api_tree,
+        path,
+        view_class=SimpleViewCallable,
+        **view_kwargs
+        ):
+        view_kwargs.setdefault('renderer', 'string')
         documentation_callable = cls(api_tree)
-        view_callable = view_class(documentation_callable, **kwargs)
+        view_callable = view_class(
+            documentation_callable,
+            **view_kwargs
+            )
         api_tree.setdefault(path, {})
         api_tree[path]['GET'] = view_callable
+
+api_documentation_template = """\
+<pre>
+${doc}
+</pre>
+"""
 
 
 
