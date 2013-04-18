@@ -88,6 +88,22 @@ class APIDocumentationMaker(object):
         
         return joiner.join([start, wrapped, end])
     
+    def get_keys_to_skip(self, view_callable):
+        if not hasattr(view_callable, 'special_kwargs'):
+            return []
+        
+        try:
+            special_kwargs_dict = view_callable.special_kwargs()
+        except Exception as exc:
+            error_msg = (
+                "ViewCallable 'special_kwargs' methods must not raise any "
+                "exceptions when 'APIDocumentationMaker' is used."
+            )
+            exc.args = (error_msg, ) + exc.args
+            raise
+        
+        return special_kwargs_dict.iterkeys()
+    
     def create_documentation(self, api_tree):
         endpoints = get_endpoints(api_tree)
         
@@ -107,6 +123,8 @@ class APIDocumentationMaker(object):
                 if type(view_callable) in types_to_skip:
                     continue
                 
+                keys_to_skip = self.get_keys_to_skip(view_callable)
+                
                 method_dict = {}
                 
                 method_dict['description'] = (
@@ -121,6 +139,10 @@ class APIDocumentationMaker(object):
                         'optional': manager.input_processor.optional,
                         'returns': manager.output_processor.required,
                         }
+                    
+                    for ikey_a in keys_to_skip:
+                        for ikey_b in ['required', 'optional']:
+                            raw_iospecs[ikey_b].pop(ikey_a, None)
                     
                     prepared_iospecs = {
                         ikey: self.prepare(ivalue)
