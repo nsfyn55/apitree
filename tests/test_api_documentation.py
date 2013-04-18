@@ -130,7 +130,6 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
     def test_all(self):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
-@pytest.mark.a
 class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
     """ 'create_documentation' filters out 'special_kwargs' keys from 'required'
         and 'optional'.
@@ -139,7 +138,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
         programatically, so they should not be exposed in the API
         documentation. """
     
-    def skip_keys_test(self, parameter_kind):
+    def make_api_tree(self, parameter_kind):
         class CustomViewCallable(APIViewCallable):
             def special_kwargs(self):
                 return {'x': object()}
@@ -149,6 +148,11 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
             pass
         
         api_tree = {'/': {'GET': view_callable}}
+        
+        return api_tree
+    
+    def skip_keys_test(self, parameter_kind):
+        api_tree = self.make_api_tree(parameter_kind)
         
         documentation = APIDocumentationMaker().create_documentation(api_tree)
         
@@ -162,6 +166,29 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
     
     def test_skip_keys_optional(self):
         self.skip_keys_test('optional')
+    
+    def no_mutation_test(self, parameter_kind):
+        """ Confirm that this behavior does not mutate the iospec dictionaries
+            of the view-callable's IOManager in-place. """
+        api_tree = self.make_api_tree(parameter_kind)
+        
+        view_callable = api_tree['/']['GET']
+        
+        # Confirm that '_call' works before 'create_documentation'.
+        view_callable._call(x=object())
+        
+        APIDocumentationMaker().create_documentation(api_tree)
+        
+        # Confirm that '_call' works after 'create_documentation'.
+        view_callable._call(x=object())
+    
+    @pytest.mark.a
+    def test_no_mutation_required(self):
+        self.no_mutation_test('required')
+    
+    @pytest.mark.a
+    def test_no_mutation_optional(self):
+        self.no_mutation_test('optional')
 
 class TestCreateDocumentationViewCallables(unittest.TestCase):
     """ Confirm that 'create_documentation' is able to handle view callables of
