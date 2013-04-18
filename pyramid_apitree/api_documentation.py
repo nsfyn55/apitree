@@ -135,8 +135,8 @@ class APIDocumentationMaker(object):
                     manager = view_callable.manager
                     
                     raw_iospecs = {
-                        'required': manager.input_processor.required,
-                        'optional': manager.input_processor.optional,
+                        'required': manager.input_processor.required.copy(),
+                        'optional': manager.input_processor.optional.copy(),
                         'returns': manager.output_processor.required,
                         }
                     

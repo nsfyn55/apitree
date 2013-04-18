@@ -94,8 +94,8 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
     
     def view_test(self, *keys):
         decorator_values = {
-            'required': object,
-            'optional': object,
+            'required': {'x': object},
+            'optional': {'y': object},
             'unlimited': True,
             'returns': object,
             }
