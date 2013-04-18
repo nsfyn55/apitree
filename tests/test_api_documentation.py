@@ -130,6 +130,39 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
     def test_all(self):
         self.view_test('required', 'optional', 'unlimited', 'returns')
 
+@pytest.mark.a
+class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
+    """ 'create_documentation' filters out 'special_kwargs' keys from 'required'
+        and 'optional'.
+        
+        Keyword arguments provided by 'special_kwargs' are usually provided
+        programatically, so they should not be exposed in the API
+        documentation. """
+    
+    def skip_keys_test(self, parameter_kind):
+        class CustomViewCallable(APIViewCallable):
+            def special_kwargs(self):
+                return {'x': object()}
+        
+        @CustomViewCallable(**{parameter_kind: {'x': object}})
+        def view_callable(**kwargs):
+            pass
+        
+        api_tree = {'/': {'GET': view_callable}}
+        
+        documentation = APIDocumentationMaker().create_documentation(api_tree)
+        
+        view_dict = documentation['/']['GET'].copy()
+        del view_dict['description']
+        
+        assert view_dict == {}
+    
+    def test_skip_keys_required(self):
+        self.skip_keys_test('required')
+    
+    def test_skip_keys_optional(self):
+        self.skip_keys_test('optional')
+
 class TestCreateDocumentationViewCallables(unittest.TestCase):
     """ Confirm that 'create_documentation' is able to handle view callables of
         every type included in 'pyramid_apitree', without raising any
