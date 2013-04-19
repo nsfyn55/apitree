@@ -183,11 +183,9 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
         # Confirm that '_call' works after 'create_documentation'.
         view_callable._call(x=object())
     
-    @pytest.mark.a
     def test_no_mutation_required(self):
         self.no_mutation_test('required')
     
-    @pytest.mark.a
     def test_no_mutation_optional(self):
         self.no_mutation_test('optional')
 
@@ -299,7 +297,7 @@ class MockConfigurator(object):
         view,
         route_name,
         request_method,
-        accepts=None,
+        accept=None,
         **kwargs
         ):
         view_dict = kwargs
@@ -309,13 +307,12 @@ class MockConfigurator(object):
         
         method_dict = route_dict.setdefault(request_method, dict())
         
-        method_dict[accepts] = view_dict
+        method_dict[accept] = view_dict
     
     def add_route(self, name, pattern):
         assert name == pattern
         self.routes.add(pattern)
 
-@pytest.mark.a
 class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
     PATH = '/api_docs'
     
@@ -337,9 +334,9 @@ class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
         
         views = config.views[self.PATH]['GET']
         
-        for iaccepts in [None, 'application/json']:
+        for iaccept in [None, 'application/json']:
             assert isinstance(
-                views[iaccepts]['view_callable'],
+                views[iaccept]['view_callable'],
                 api_doc_view_class
                 )
         

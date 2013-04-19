@@ -5,6 +5,7 @@ import os.path
 from mako.template import Template
 from iomanager import ListOf
 from iomanager.iomanager import NotProvided
+from pyramid.response import Response
 
 from .view_callable import SimpleViewCallable
 from .tree_scan import (
@@ -21,6 +22,8 @@ class PreparationFailureError(Error):
     """ A value failed to coerce to a string via the 'prepare' method. """
 
 class APIDocumentationMaker(object):
+    documentation_view_class = SimpleViewCallable
+    
     def __init__(self, api_tree={}, title='API Documentation'):
         self.documentation_dict = self.create_documentation(api_tree)
         self.documentation_title = title
@@ -165,21 +168,50 @@ class APIDocumentationMaker(object):
         return result
     
     @classmethod
-    def scan_and_insert(
+    def add_documentation_views(
         cls,
+        configurator,
         api_tree,
-        path,
-        view_class=SimpleViewCallable,
+        path='/api_docs',
         **view_kwargs
         ):
-        view_kwargs.setdefault('renderer', 'string')
-        documentation_callable = cls(api_tree)
-        view_callable = view_class(
-            documentation_callable,
-            **view_kwargs
-            )
-        api_tree.setdefault(path, {})
-        api_tree[path]['GET'] = view_callable
+        api_docs = cls(api_tree)
+        
+        view_callable_class = cls.documentation_view_class
+        
+        view_kwargs.setdefault('request_method', 'GET')
+        
+        html_view_kwargs = {
+            'accept': ''
+            }
+        html_view_kwargs.update(view_kwargs)
+        
+        json_view_kwargs = {
+            'accept': 'application/json',
+            'renderer': 'json'
+            }
+        json_view_kwargs.update(view_kwargs)
+        
+        @view_callable_class(**html_view_kwargs)
+        def html_view(request):
+            return Response(
+                body=api_docs.documentation_html,
+                content_type='text/html',
+                status=200,
+                )
+        
+        @view_callable_class(**json_view_kwargs)
+        def json_view(request):
+            return api_docs.documentation_dict
+        
+        configurator.add_route(name=path, pattern=path)
+        
+        for iview in [html_view, json_view]:
+            configurator.add_view(
+                route_name=path,
+                view=iview,
+                **iview.view_kwargs
+                )
 
 
 

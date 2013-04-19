@@ -14,5 +14,6 @@ setup(
     install_requires=[
         'iomanager>=0.3.4',
         'mako',
+        'pyramid>=1.3.4',
         ],
     )
