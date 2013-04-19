@@ -6,6 +6,7 @@ from webob import Request
 from iomanager import ListOf
 from pyramid_apitree import (
     APIViewCallable,
+    SimpleViewCallable,
     simple_view,
     function_view,
     api_view,
@@ -286,23 +287,81 @@ class TestAPIDocumentationMaker(unittest.TestCase):
             )
         
         assert result == {}
+
+class MockConfigurator(object):
+    """ A mocked Pyramid configurator. """
+    def __init__(self):
+        self.views = {}
+        self.routes = set()
     
-    def test_scan_and_insert(self):
-        """ Test the 'scan_and_insert' classmethod of
-            'APIDocumentationMaker'. """
-        class CustomAPIViewCallable(APIViewCallable):
-            pass
+    def add_view(
+        self,
+        view,
+        route_name,
+        request_method,
+        accepts=None,
+        **kwargs
+        ):
+        view_dict = kwargs
+        view_dict['view_callable'] = view
         
-        api_tree = {'/view': self.make_view_callable()}
+        route_dict = self.views.setdefault(route_name, dict())
         
-        APIDocumentationMaker.scan_and_insert(
+        method_dict = route_dict.setdefault(request_method, dict())
+        
+        method_dict[accepts] = view_dict
+    
+    def add_route(self, name, pattern):
+        assert name == pattern
+        self.routes.add(pattern)
+
+@pytest.mark.a
+class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
+    PATH = '/api_docs'
+    
+    def add_documentation_test(
+        self,
+        api_doc_maker_class,
+        api_doc_view_class
+        ):
+        """ Test the 'instert_documentation' classmethod of
+            'APIDocumentationmaker'. """
+        api_tree = {}
+        config = MockConfigurator()
+        
+        api_doc_maker_class.add_documentation_views(
+            config,
             api_tree,
-            '/apidoc',
-            CustomAPIViewCallable,
+            self.PATH,
             )
         
-        result = api_tree['/apidoc']['GET']
-        assert isinstance(result, CustomAPIViewCallable)
+        views = config.views[self.PATH]['GET']
+        
+        for iaccepts in [None, 'application/json']:
+            assert isinstance(
+                views[iaccepts]['view_callable'],
+                api_doc_view_class
+                )
+        
+        assert views['application/json']['renderer'] == 'json'
+    
+    def test_add_documentation(self):
+        self.add_documentation_test(
+            APIDocumentationMaker,
+            SimpleViewCallable,
+            )
+    
+    def test_custom_view_callable_class(self):
+        class CustomViewCallable(SimpleViewCallable):
+            pass
+        
+        class CustomAPIDocumentationMaker(APIDocumentationMaker):
+            documentation_view_class = CustomViewCallable
+        
+        self.add_documentation_test(
+            CustomAPIDocumentationMaker,
+            CustomViewCallable,
+            )
 
 
 
