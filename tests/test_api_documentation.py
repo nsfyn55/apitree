@@ -10,6 +10,8 @@ from pyramid_apitree import (
     simple_view,
     function_view,
     api_view,
+    GET,
+    POST,
     )
 from pyramid_apitree.api_documentation import (
     APIDocumentationMaker,
@@ -106,11 +108,11 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
         def view_callable(**kwargs):
             pass
         
-        api_tree = {'/': {'GET': view_callable}}
+        api_tree = {'/': {GET: view_callable}}
         
         documentation = APIDocumentationMaker().create_documentation(api_tree)
         
-        view_dict = documentation['/']['GET']
+        view_dict = documentation['/'][GET]
         
         view_dict.pop('description', None)
         
@@ -148,7 +150,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
         def view_callable(**kwargs):
             pass
         
-        api_tree = {'/': {'GET': view_callable}}
+        api_tree = {'/': {GET: view_callable}}
         
         return api_tree
     
@@ -157,7 +159,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
         
         documentation = APIDocumentationMaker().create_documentation(api_tree)
         
-        view_dict = documentation['/']['GET'].copy()
+        view_dict = documentation['/'][GET].copy()
         del view_dict['description']
         
         assert view_dict == {}
@@ -173,7 +175,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
             of the view-callable's IOManager in-place. """
         api_tree = self.make_api_tree(parameter_kind)
         
-        view_callable = api_tree['/']['GET']
+        view_callable = api_tree['/'][GET]
         
         # Confirm that '_call' works before 'create_documentation'.
         view_callable._call(x=object())
@@ -259,10 +261,10 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         self.location_found_test(api_tree, ['/', request_methods_string])
     
     def test_single_request_method(self):
-        self.request_method_test(('GET',))
+        self.request_method_test((GET,))
     
     def test_multiple_request_methods(self):
-        self.request_method_test(('GET', 'POST'))
+        self.request_method_test((GET, POST))
     
     def test_types_to_skip(self):
         class CustomViewCallable(APIViewCallable):
@@ -332,7 +334,7 @@ class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
             self.PATH,
             )
         
-        views = config.views[self.PATH]['GET']
+        views = config.views[self.PATH][GET]
         
         for iaccept in ['', 'application/json']:
             assert isinstance(
