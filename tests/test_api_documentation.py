@@ -334,7 +334,7 @@ class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
         
         views = config.views[self.PATH]['GET']
         
-        for iaccept in [None, 'application/json']:
+        for iaccept in ['', 'application/json']:
             assert isinstance(
                 views[iaccept]['view_callable'],
                 api_doc_view_class
