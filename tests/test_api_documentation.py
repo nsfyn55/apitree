@@ -1,7 +1,6 @@
 import json
 import unittest
 import pytest
-from webob import Request
 
 from iomanager import ListOf
 from pyramid_apitree import (

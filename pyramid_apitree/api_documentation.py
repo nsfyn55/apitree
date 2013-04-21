@@ -30,7 +30,7 @@ class APIDocumentationMaker(object):
         
         template_filename = os.path.join(
             os.path.dirname(__file__),
-            'api_doc_template.mak',
+            'api_doc_template.mako',
             )
         
         self.documentation_html = Template(
