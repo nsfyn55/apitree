@@ -2,7 +2,9 @@
 
 from pyramid_apitree.exc import BadAPITreeError
 
-ALL_REQUEST_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'HEAD')
+GET, POST, PUT, DELETE, HEAD = 'GET', 'POST', 'PUT', 'DELETE', 'HEAD'
+
+ALL_REQUEST_METHODS = (GET, POST, PUT, DELETE, HEAD)
 
 def get_endpoints(api_tree, root_path=''):
     """ Returns a dictionary, like this:
@@ -24,10 +26,10 @@ def get_endpoints(api_tree, root_path=''):
         view_dict = {}
         
         if isinstance(ikey, tuple) or ikey in ALL_REQUEST_METHODS:
-            route_request_method = ikey
+            request_method = ikey
             branch_path = ''
         else:
-            route_request_method = None
+            request_method = None
             branch_path = ikey
         
         try:
@@ -41,8 +43,8 @@ def get_endpoints(api_tree, root_path=''):
                 )
         
         if isinstance(ivalue, dict):
-            if route_request_method is not None:
-                invalid_path = complete_route + '/' + str(route_request_method)
+            if request_method is not None:
+                invalid_path = complete_route + '/' + str(request_method)
                 raise BadAPITreeError(
                     "'Request method' branch routes ('GET', 'POST', etc.) "
                     "cannot have a dictionary of sub-routes. Invalid path: {}"
@@ -53,15 +55,18 @@ def get_endpoints(api_tree, root_path=''):
             continue
         
         view_callable = ivalue
-        view_dict['view'] = view_callable
         
         view_kwargs = getattr(view_callable, 'view_kwargs', dict())
         view_dict.update(view_kwargs)
+        view_dict['view'] = view_callable
         
         # Request method from API tree overrides request method provided by
         # view callable 'view_kwargs'.
-        if route_request_method is not None:
-            view_dict['request_method'] = route_request_method
+        if request_method is not None:
+            if not isinstance(request_method, tuple):
+                request_method = tuple([request_method])
+            
+            view_dict['request_method'] = request_method
         
         view_dicts_list = endpoints.setdefault(complete_route, list())
         view_dicts_list.append(view_dict)
@@ -72,9 +77,9 @@ def scan_api_tree(configurator, api_tree, root_path=''):
     endpoints = get_endpoints(api_tree, root_path=root_path)
     
     for complete_route, view_dicts_list in endpoints.iteritems():
+        configurator.add_route(name=complete_route, pattern=complete_route)
+        
         for view_dict in view_dicts_list:
-            configurator.add_route(name=complete_route, pattern=complete_route)
-            
             configurator.add_view(
                 route_name=complete_route,
                 **view_dict

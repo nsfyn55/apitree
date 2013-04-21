@@ -17,3 +17,12 @@ v0.1.0a, 2013-04-08 -- Beta: API documentation
 - Add 'api_documentation' module.
 - Add 'prepare_item' function to prepare 'iospec' values for rendering in HTML and
   JSON.
+
+v0.2.0, 2013-04-21 -- API documentation
+- 'APIDocumentationMaker' class scans an API tree and creates an API documentation
+  dictionary.
+- Customization of API documentation by subclassing 'APIDocumentationMaker'.
+- 'api_doc_template.mak': Built-in Mako template that displays an API
+  documentation web page. Contributed by Dan Kruse!
+- 'APIDocumentationMaker.add_documentation_views' quickly adds API documentation
+  endpoints (HTML and JSON) to a Pyramid web application.

@@ -22,23 +22,30 @@ class BaseViewCallable(object):
             self.setup(self.__dict__.pop('_setup_kwargs'))
             return self
         
-        return self.view_call(obj)
+        self.request = obj
+        self.authenticate()
+        return self.view_call()
     
     def setup(self, kwargs_dict):
-        self.view_kwargs = kwargs_dict
+        view_kwargs = getattr(self, 'default_view_kwargs', {}).copy()
+        view_kwargs.update(kwargs_dict)
+        self.view_kwargs = view_kwargs
     
     def set_wrapped(self, wrapped):
         if not callable(wrapped):
             raise TypeError('Wrapped object must be callable.')
         self.wrapped = wrapped
+    
+    def authenticate(self):
+        pass
 
 class SimpleViewCallable(BaseViewCallable):
-    def view_call(self, request):
-        return self.wrapped(request)
+    def view_call(self):
+        return self.wrapped(self.request)
 
 class FunctionViewCallable(BaseViewCallable):
-    def view_call(self, request):
-        self.request = request
+    def view_call(self):
+        request = self.request
         
         kwargs_url = dict(request.matchdict)
         kwargs_get = dict(request.GET)
@@ -51,7 +58,7 @@ class FunctionViewCallable(BaseViewCallable):
             kwargs_body = request.POST
         
         kwargs_dict = {}
-        special_kwargs = self.special_kwargs(request)
+        special_kwargs = self.special_kwargs()
         
         # Listed in reverse-priority order (last has highest priority).
         kwargs_sources = [kwargs_body, kwargs_get, kwargs_url, special_kwargs]
@@ -61,7 +68,7 @@ class FunctionViewCallable(BaseViewCallable):
         
         return self.wrapped_call(**kwargs_dict)
     
-    def special_kwargs(self, request):
+    def special_kwargs(self):
         return {}
     
     def wrapped_call(self, **kwargs):

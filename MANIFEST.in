@@ -1,3 +1,2 @@
-include *.txt
-include README.md
-recursive-include docs *.txt
+include *.txt *.md
+recursive-include pyramid_apitree *.mako
