@@ -2,7 +2,9 @@
 
 from pyramid_apitree.exc import BadAPITreeError
 
-ALL_REQUEST_METHODS = ('GET', 'POST', 'PUT', 'DELETE', 'HEAD')
+GET, POST, PUT, DELETE, HEAD = 'GET', 'POST', 'PUT', 'DELETE', 'HEAD'
+
+ALL_REQUEST_METHODS = (GET, POST, PUT, DELETE, HEAD)
 
 def get_endpoints(api_tree, root_path=''):
     """ Returns a dictionary, like this:

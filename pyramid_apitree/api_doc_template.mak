@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> -->
 <%
     sorted_paths = sorted(documentation_dict.iterkeys())
     endpoint_order = ('description', 'required', 'optional', 'unlimited', 'returns')
