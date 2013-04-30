@@ -26,3 +26,7 @@ v0.2.0, 2013-04-21 -- API documentation
   documentation web page. Contributed by Dan Kruse!
 - 'APIDocumentationMaker.add_documentation_views' quickly adds API documentation
   endpoints (HTML and JSON) to a Pyramid web application.
+
+v0.3.0, 2013-04-30 -- Python 3.3.1
+- Refactor to work with Python 3.3.1.
+- Python 2.x no longer supported starting with this release.
