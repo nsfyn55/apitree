@@ -63,8 +63,8 @@ class APIDocumentationMaker(object):
     
     def prepare_list(self, value):
         start, end = '[]'
-        prepared_lines = map(self.prepare, value)
-        all_lines = [start] + map(self.indent, prepared_lines) + [end]
+        prepared_lines = list(map(self.prepare, value))
+        all_lines = [start] + list(map(self.indent, prepared_lines)) + [end]
         
         return '\n'.join(all_lines)
     
@@ -72,9 +72,9 @@ class APIDocumentationMaker(object):
         start, end = '{}'
         prepared_lines = [
             "{}: {}".format(ikey, self.prepare(ivalue))
-            for ikey, ivalue in value.iteritems()
+            for ikey, ivalue in value.items()
             ]
-        all_lines = [start] + map(self.indent, prepared_lines) + [end]
+        all_lines = [start] + list(map(self.indent, prepared_lines)) + [end]
         
         return '\n'.join(all_lines)
     
@@ -105,7 +105,7 @@ class APIDocumentationMaker(object):
             exc.args = (error_msg, ) + exc.args
             raise
         
-        return special_kwargs_dict.iterkeys()
+        return special_kwargs_dict.keys()
     
     def create_documentation(self, api_tree):
         endpoints = get_endpoints(api_tree)
@@ -113,7 +113,7 @@ class APIDocumentationMaker(object):
         types_to_skip = getattr(self, 'types_to_skip', [])
         
         result = {}
-        for path, endpoint_list in endpoints.iteritems():
+        for path, endpoint_list in endpoints.items():
             path_methods = {}
             for item in endpoint_list:
                 request_methods = item.get(
@@ -149,7 +149,7 @@ class APIDocumentationMaker(object):
                     
                     prepared_iospecs = {
                         ikey: self.prepare(ivalue)
-                        for ikey, ivalue in raw_iospecs.iteritems()
+                        for ikey, ivalue in raw_iospecs.items()
                         if ivalue is not NotProvided and ivalue != {}
                         }
                     

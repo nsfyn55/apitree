@@ -131,7 +131,7 @@ class APIViewCallable(FunctionViewCallable):
             )
         
         remaining_kwargs = {
-            ikey: ivalue for ikey, ivalue in kwargs_dict.iteritems()
+            ikey: ivalue for ikey, ivalue in kwargs_dict.items()
             if ikey not in ['required', 'optional', 'unlimited', 'returns']
             }
         

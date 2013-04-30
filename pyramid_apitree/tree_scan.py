@@ -22,7 +22,7 @@ def get_endpoints(api_tree, root_path=''):
     
     endpoints = {}
     
-    for ikey, ivalue in api_tree.iteritems():
+    for ikey, ivalue in api_tree.items():
         view_dict = {}
         
         if isinstance(ikey, tuple) or ikey in ALL_REQUEST_METHODS:
@@ -76,7 +76,7 @@ def get_endpoints(api_tree, root_path=''):
 def scan_api_tree(configurator, api_tree, root_path=''):
     endpoints = get_endpoints(api_tree, root_path=root_path)
     
-    for complete_route, view_dicts_list in endpoints.iteritems():
+    for complete_route, view_dicts_list in endpoints.items():
         configurator.add_route(name=complete_route, pattern=complete_route)
         
         for view_dict in view_dicts_list:

@@ -77,7 +77,7 @@ class TestPrepareItem(unittest.TestCase):
 
 class TestPrepareItemCustomClassName(unittest.TestCase):
     def test_display_name(self):
-        expected = u'abcxyz'
+        expected = 'abcxyz'
         class CustomType(object):
             pass
         
