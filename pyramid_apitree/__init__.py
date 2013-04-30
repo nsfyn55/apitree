@@ -1,7 +1,7 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
-from api_documentation import APIDocumentationMaker
-from tree_scan import (
+from .api_documentation import APIDocumentationMaker
+from .tree_scan import (
     scan_api_tree,
     GET,
     POST,
@@ -9,7 +9,7 @@ from tree_scan import (
     DELETE,
     HEAD,
     )
-from view_callable import (
+from .view_callable import (
     BaseViewCallable,
     SimpleViewCallable,
     FunctionViewCallable,
