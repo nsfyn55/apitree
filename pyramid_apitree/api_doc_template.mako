@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> -->
 <%
-    sorted_paths = sorted(documentation_dict.iterkeys())
+    sorted_paths = sorted(documentation_dict.keys())
     endpoint_order = ('description', 'required', 'optional', 'unlimited', 'returns')
 %>
 <!doctype html>
@@ -55,7 +55,7 @@
             <h4><a href="#" class="toggle">${path}</a></h4>
             <div class="collapsible">
                 <table class="table">
-                    % for method, endpoint_dict in methods_dict.iteritems():
+                    % for method, endpoint_dict in methods_dict.items():
                     <tr>
                         <% path_method = '-'.join([path, method]) %>
                         <td class="http_verb"><a href="#">${method}</a></td>
