@@ -1,9 +1,6 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 import iomanager
-from iomanager import (
-    IOManager,
-    VerificationFailureError,
-    )
+from iomanager import IOManager
 
 class BaseViewCallable(object):
     def __init__(self, *pargs, **kwargs):
