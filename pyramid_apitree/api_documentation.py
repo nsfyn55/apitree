@@ -2,6 +2,10 @@
 import inspect
 import json
 import os.path
+from collections.abc import(
+    Sequence,
+    Mapping,
+    )
 from mako.template import Template
 from iomanager import ListOf
 from iomanager.iomanager import NotProvided
@@ -20,6 +24,13 @@ class Error(Exception):
 
 class PreparationFailureError(Error):
     """ A value failed to coerce to a string via the 'prepare' method. """
+
+def is_container(obj, classinfo):
+    """ 'obj' is an instance of 'classinfo', but is not a 'str' or 'bytes'
+        instance. """
+    if isinstance(obj, classinfo) and not isinstance(obj, (str, bytes)):
+        return True
+    return False
 
 class APIDocumentationMaker(object):
     documentation_view_class = SimpleViewCallable
@@ -48,9 +59,9 @@ class APIDocumentationMaker(object):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
     
     def prepare(self, value):
-        if isinstance(value, (list, tuple)):
+        if is_container(value, Sequence):
             return self.prepare_list(value)
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             return self.prepare_dict(value)
         if isinstance(value, ListOf):
             return self.prepare_listof(value)
@@ -82,12 +93,12 @@ class APIDocumentationMaker(object):
         start, end = 'ListOf(', ')'
         
         iospec_obj = value.iospec_obj
-        if not isinstance(iospec_obj, (list, dict)):
-            joiner = ''
-            wrapped = self.prepare(iospec_obj)
-        else:
+        if is_container(iospec_obj, (Sequence, Mapping, ListOf)):
             joiner = '\n'
             wrapped = self.indent(self.prepare(iospec_obj))
+        else:
+            joiner = ''
+            wrapped = self.prepare(iospec_obj)
         
         return joiner.join([start, wrapped, end])
     

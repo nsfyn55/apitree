@@ -1,6 +1,6 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
-from pyramid_apitree.exc import BadAPITreeError
+from .exc import BadAPITreeError
 
 GET, POST, PUT, DELETE, HEAD = 'GET', 'POST', 'PUT', 'DELETE', 'HEAD'
 
