@@ -1,6 +1,7 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
 import unittest
+from pyramid.exceptions import ConfigurationError
 import pytest
 
 from pyramid_apitree import (
@@ -54,27 +55,40 @@ def make_tuple(value):
 class MockConfigurator(object):
     """ A mocked Pyramid configurator. """
     def __init__(self):
-        self.views = {}
-        self.routes = set()
+        self.routes = {}
     
     def add_view(self, view, route_name, **kwargs):
         view_dict = kwargs.copy()
-        view_dict['view_callable'] = view
         
         if 'request_method' in view_dict:
             view_dict['request_method'] = make_tuple(
                 view_dict['request_method']
                 )
         
+        # 'predicates_tuple' does not include 'view_callable'.
+        predicates_tuple = tuple(view_dict.items())
+        
+        view_dict['view_callable'] = view
         view_tuple = tuple(view_dict.items())
         
-        views_list = self.views.setdefault(route_name, list())
+        route = self.routes[route_name]
         
-        views_list.append(view_tuple)
+        if predicates_tuple in route['predicates']:
+            raise ConfigurationError(
+                "A view with this 'route_name' and predicates has already been "
+                "added: {}, {}".format(route_name, predicates_tuple)
+                )
+        
+        route['predicates'].append(predicates_tuple)
+        route['views'].append(view_tuple)
     
     def add_route(self, name, pattern):
         assert name == pattern
-        self.routes.add(pattern)
+        
+        self.routes.setdefault(
+            pattern,
+            {'views': [], 'predicates': []}
+            )
 
 def test_empty_api_tree():
     api_tree = {}
@@ -82,7 +96,6 @@ def test_empty_api_tree():
     config = MockConfigurator()
     scan_api_tree(config, api_tree)
     
-    assert not config.views
     assert not config.routes
 
 class ScanTest(unittest.TestCase):
@@ -92,8 +105,8 @@ class ScanTest(unittest.TestCase):
     def dummy(*pargs, **kwargs):
         """ Another dummy 'view_callable' object. """
     
-    def endpoint_test(self, path, **expected_view_dict):
-        expected_dict = expected_view_dict.copy()
+    def endpoint_test(self, path, **expected_predicates):
+        expected_dict = expected_predicates.copy()
         if 'request_method' in expected_dict:
             expected_dict['request_method'] = make_tuple(
                 expected_dict['request_method']
@@ -111,9 +124,8 @@ class ScanTest(unittest.TestCase):
             )
         
         assert path in config.routes
-        assert path in config.views
         
-        assert expected in config.views[path]
+        assert expected in config.routes[path]['views']
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):
