@@ -9,21 +9,33 @@ from pyramid_apitree import (
 from pyramid_apitree.tree_scan import ALL_REQUEST_METHODS
 from pyramid_apitree.exc import BadAPITreeError
 
+pytestmark = pytest.mark.current
+
 """ An example API tree.
     
     api_tree = {
-        'GET': root_get,
+        GET: root_get,
         '/resource': {
-            'GET': resource_get_all,
-            'POST': resource_post,
-            '.{resource_id}': {
-                'GET': resource_individual_get,
-                'PUT': resource_individual_update,
-                'DELETE': resource_individual_delete,
+            GET: resource_get_all,
+            POST: resource_post,
+            '/{resource_id}': {
+                GET: resource_individual_get,
+                PUT: resource_individual_update,
+                DELETE: resource_individual_delete,
                 '/component': {
-                    'GET': resource_individual_component_get,
+                    GET: resource_individual_component_get,
                     }
                 }
+            }
+        '/branch_a': endpoint_a,
+        '/branch_b': (endpoint_b_get, endpoint_b_post)
+        '/branch_c': {
+            '': endpoint_c,
+            '/branch_c_x': endpoint_c_x,
+            }
+        '/branch_d': {
+            '': endpoint_d,
+            GET: endpoint_d_get,
             }
         }
     
@@ -48,23 +60,20 @@ class MockConfigurator(object):
         self.views = {}
         self.routes = set()
     
-    def add_view(
-        self,
-        view,
-        route_name,
-        **kwargs
-        ):
-        view_dict = kwargs
+    def add_view(self, view, route_name, **kwargs):
+        view_dict = kwargs.copy()
         view_dict['view_callable'] = view
         
-        config_view = self.views.setdefault(route_name, dict())
+        if 'request_method' in view_dict:
+            view_dict['request_method'] = make_request_methods_tuple(
+                view_dict['request_method']
+                )
         
-        request_methods = make_request_methods_tuple(
-            kwargs.get('request_method', None)
-            )
+        view_tuple = tuple(view_dict.items())
         
-        for item in request_methods:
-            config_view[item] = view_dict
+        views_list = self.views.setdefault(route_name, list())
+        
+        views_list.append(view_tuple)
     
     def add_route(self, name, pattern):
         assert name == pattern
@@ -87,32 +96,27 @@ class ScanTest(unittest.TestCase):
         """ Another dummy 'view_callable' object. """
     
     def endpoint_test(self, path, **expected_view_dict):
-        if 'request_method' in expected_view_dict:
-            if not isinstance(expected_view_dict['request_method'], tuple):
-                expected_view_dict['request_method'] = \
-                    tuple([expected_view_dict['request_method']])
+        expected_dict = expected_view_dict.copy()
+        if 'request_method' in expected_dict:
+            expected_dict['request_method'] = make_request_methods_tuple(
+                expected_dict['request_method']
+                )
         
-        expected_view_dict['view_callable'] = self.target
+        expected_dict['view_callable'] = self.target
         
-        request_methods = make_request_methods_tuple(
-            expected_view_dict.get('request_method', None)
-            )
+        expected = tuple(expected_dict.items())
         
         config = MockConfigurator()
         scan_api_tree(
             configurator=config,
             api_tree=self.api_tree,
-            root_path='')
+            root_path=''
+            )
         
         assert path in config.routes
         assert path in config.views
         
-        for item in request_methods:
-            assert item in config.views[path].keys()
-            
-            view_dict = config.views[path][item].copy()
-            
-            assert view_dict == expected_view_dict
+        assert expected in config.views[path]
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):
