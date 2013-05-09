@@ -147,9 +147,6 @@ class TestRequestMethods(ScanTest):
     
     def test_HEAD_method(self):
         self.request_method_test(request_method=HEAD)
-    
-    def test_multiple_request_methods(self):
-        self.request_method_test(request_method=(GET, POST))
 
 class TestRequestMethodsMultipleEndpoints(ScanTest):
     def test_multiple_endpoints(self):
@@ -158,6 +155,38 @@ class TestRequestMethodsMultipleEndpoints(ScanTest):
             POST: self.target,
             }
         self.endpoint_test(path='', request_method=POST)
+
+@pytest.mark.a
+class TestBranchLocationTuples(ScanTest):
+    """ Branch locations can be tuples of paths and/or request methods. """
+    @pytest.mark.x
+    def test_bad(self):
+        self.api_tree = {
+            ('/a', '/a'): self.target,
+            }
+        self.endpoint_test('/a')
+        raise Exception
+    
+    @pytest.mark.b
+    def test_path_tuple(self):
+        paths = ('/a', '/b')
+        self.api_tree = {paths: self.target}
+        for item in paths:
+            self.endpoint_test(item)
+    
+    def test_request_method_tuple(self):
+        methods = (GET, POST)
+        self.api_tree = {methods: self.target}
+        for item in methods:
+            self.endpoint_test('', request_method=item)
+    
+    def test_mixed_tuple(self):
+        self.api_tree = {
+            '/a': self.target,
+            GET: self.target,
+            }
+        self.endpoint_test(path='/a')
+        self.endpoint_test(path='', request_method=GET)
 
 class TestBranch(ScanTest):
     def test_branch_no_request_method(self):
