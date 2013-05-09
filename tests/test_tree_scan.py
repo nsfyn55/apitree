@@ -1,11 +1,12 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
 import unittest
-from pyramid.exceptions import ConfigurationError
+import pyramid.exceptions
 import pytest
 
 from pyramid_apitree import (
     scan_api_tree,
+    RequestMethod,
     GET,
     POST,
     PUT,
@@ -13,8 +14,6 @@ from pyramid_apitree import (
     HEAD,
     )
 from pyramid_apitree.exc import BadAPITreeError
-
-pytestmark = pytest.mark.current
 
 """ An example API tree.
     
@@ -49,8 +48,14 @@ pytestmark = pytest.mark.current
 def make_tuple(value):
     if isinstance(value, tuple):
         return value
-    
     return (value, )
+
+def make_request_method_tuple(value):
+    """ Converts RequestMethod instances into request method strings. All
+        results are tuples. """
+    if isinstance(value, tuple):
+        return sum(value, RequestMethod()).request_method
+    return value.request_method
 
 class MockConfigurator(object):
     """ A mocked Pyramid configurator. """
@@ -74,7 +79,7 @@ class MockConfigurator(object):
         route = self.routes[route_name]
         
         if predicates_tuple in route['predicates']:
-            raise ConfigurationError(
+            raise pyramid.exceptions.ConfigurationError(
                 "A view with this 'route_name' and predicates has already been "
                 "added: {}, {}".format(route_name, predicates_tuple)
                 )
@@ -108,7 +113,7 @@ class ScanTest(unittest.TestCase):
     def endpoint_test(self, path, **expected_predicates):
         expected_dict = expected_predicates.copy()
         if 'request_method' in expected_dict:
-            expected_dict['request_method'] = make_tuple(
+            expected_dict['request_method'] = make_request_method_tuple(
                 expected_dict['request_method']
                 )
         
@@ -156,18 +161,8 @@ class TestRequestMethodsMultipleEndpoints(ScanTest):
             }
         self.endpoint_test(path='', request_method=POST)
 
-@pytest.mark.a
 class TestBranchLocationTuples(ScanTest):
     """ Branch locations can be tuples of paths and/or request methods. """
-    @pytest.mark.x
-    def test_bad(self):
-        self.api_tree = {
-            ('/a', '/a'): self.target,
-            }
-        self.endpoint_test('/a')
-        raise Exception
-    
-    @pytest.mark.b
     def test_path_tuple(self):
         paths = ('/a', '/b')
         self.api_tree = {paths: self.target}
@@ -177,8 +172,7 @@ class TestBranchLocationTuples(ScanTest):
     def test_request_method_tuple(self):
         methods = (GET, POST)
         self.api_tree = {methods: self.target}
-        for item in methods:
-            self.endpoint_test('', request_method=item)
+        self.endpoint_test('', request_method=methods)
     
     def test_mixed_tuple(self):
         self.api_tree = {
@@ -187,6 +181,13 @@ class TestBranchLocationTuples(ScanTest):
             }
         self.endpoint_test(path='/a')
         self.endpoint_test(path='', request_method=GET)
+    
+    def test_duplicate_paths_raises(self):
+        self.api_tree = {
+            ('/a', '/a'): self.target,
+            }
+        with pytest.raises(pyramid.exceptions.ConfigurationError):
+            self.endpoint_test('/a')
 
 class TestBranch(ScanTest):
     def test_branch_no_request_method(self):

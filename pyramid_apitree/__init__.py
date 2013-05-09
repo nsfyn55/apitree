@@ -3,6 +3,7 @@
 from .api_documentation import APIDocumentationMaker
 from .tree_scan import (
     scan_api_tree,
+    RequestMethod,
     GET,
     POST,
     PUT,
