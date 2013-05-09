@@ -183,11 +183,46 @@ class TestBranchLocationTuples(ScanTest):
         self.endpoint_test(path='', request_method=GET)
     
     def test_duplicate_paths_raises(self):
-        self.api_tree = {
-            ('/a', '/a'): self.target,
-            }
+        self.api_tree = {('/', '/'): self.target,}
         with pytest.raises(pyramid.exceptions.ConfigurationError):
-            self.endpoint_test('/a')
+            self.endpoint_test('/')
+
+@pytest.mark.a
+class TestBranchObjectTuples(ScanTest):
+    """ Branch objects can be tuples of views or trees. """
+    @pytest.mark.x
+    def test_view_tuple_duplicate_predicates_raises(self):
+        self.api_tree = {'/', (self.target, self.dummy)}
+        with pytest.raises(pyramid.exceptions.ConfigurationError):
+            self.endpoint_test('/')
+    
+    @pytest.mark.b
+    def test_view_tuple(self):
+        """ If a branch object is a tuple of views, those views must have
+            distinct predicates. """
+        self.dummy.view_kwargs = {'predicate': 'value'}
+        self.api_tree = {'/', (self.target, self.dummy)}
+        self.endpoint_test('/')
+    
+    def test_tree_tuple(self):
+        self.api_tree = {
+            '/a': (
+                {'/x': self.target},
+                {'/y': self.target},
+                )
+            }
+        for path in ['/a/x', '/a/y']:
+            self.endpoint_test(path)
+    
+    def test_mixed_tuple(self):
+        self.api_tree = {
+            '/': (
+                {'/x': self.target},
+                self.target,
+                )
+            }
+        for path in ['/', '/x']:
+            self.endpoint_test(path)
 
 class TestBranch(ScanTest):
     def test_branch_no_request_method(self):
