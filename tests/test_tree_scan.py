@@ -5,8 +5,12 @@ import pytest
 
 from pyramid_apitree import (
     scan_api_tree,
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    HEAD,
     )
-from pyramid_apitree.tree_scan import ALL_REQUEST_METHODS
 from pyramid_apitree.exc import BadAPITreeError
 
 pytestmark = pytest.mark.current
@@ -41,18 +45,11 @@ pytestmark = pytest.mark.current
     
     """
 
-def make_request_methods_tuple(request_method):
-    """ The Pyramid 'Configurator' 'add_view' and 'add_route' methods allow the
-        'request_method' to either be a string value or a tuple of string
-        values. This function duplicates that behavior. """
+def make_tuple(value):
+    if isinstance(value, tuple):
+        return value
     
-    if isinstance(request_method, tuple):
-        return request_method
-    
-    if request_method is None:
-        return ALL_REQUEST_METHODS
-    
-    return (request_method, )
+    return (value, )
 
 class MockConfigurator(object):
     """ A mocked Pyramid configurator. """
@@ -65,7 +62,7 @@ class MockConfigurator(object):
         view_dict['view_callable'] = view
         
         if 'request_method' in view_dict:
-            view_dict['request_method'] = make_request_methods_tuple(
+            view_dict['request_method'] = make_tuple(
                 view_dict['request_method']
                 )
         
@@ -98,7 +95,7 @@ class ScanTest(unittest.TestCase):
     def endpoint_test(self, path, **expected_view_dict):
         expected_dict = expected_view_dict.copy()
         if 'request_method' in expected_dict:
-            expected_dict['request_method'] = make_request_methods_tuple(
+            expected_dict['request_method'] = make_tuple(
                 expected_dict['request_method']
                 )
         
@@ -125,30 +122,30 @@ class TestRequestMethods(ScanTest):
         self.endpoint_test(path='', request_method=request_method)
     
     def test_GET_method(self):
-        self.request_method_test(request_method='GET')
+        self.request_method_test(request_method=GET)
     
     def test_POST_method(self):
-        self.request_method_test(request_method='POST')
+        self.request_method_test(request_method=POST)
     
     def test_PUT_method(self):
-        self.request_method_test(request_method='PUT')
+        self.request_method_test(request_method=PUT)
     
     def test_DELETE_method(self):
-        self.request_method_test(request_method='DELETE')
+        self.request_method_test(request_method=DELETE)
     
     def test_HEAD_method(self):
-        self.request_method_test(request_method='HEAD')
+        self.request_method_test(request_method=HEAD)
     
     def test_multiple_request_methods(self):
-        self.request_method_test(request_method=('GET', 'POST'))
+        self.request_method_test(request_method=(GET, POST))
 
 class TestRequestMethodsMultipleEndpoints(ScanTest):
     def test_multiple_endpoints(self):
         self.api_tree = {
-            'GET': self.dummy,
-            'POST': self.target,
+            GET: self.dummy,
+            POST: self.target,
             }
-        self.endpoint_test(path='', request_method='POST')
+        self.endpoint_test(path='', request_method=POST)
 
 class TestBranch(ScanTest):
     def test_branch_no_request_method(self):
@@ -158,10 +155,10 @@ class TestBranch(ScanTest):
     def test_branch_yes_request_method(self):
         self.api_tree = {
             '/resource': {
-                'GET': self.target,
+                GET: self.target,
                 }
             }
-        self.endpoint_test('/resource', request_method='GET')
+        self.endpoint_test('/resource', request_method=GET)
     
     def test_multiple_branches(self):
         self.api_tree = {
@@ -183,11 +180,11 @@ class TestComplexBranch(ScanTest):
         self.api_tree = {
             '/resource': {
                 '/component': {
-                    'GET': self.target
+                    GET: self.target
                     }
                 }
             }
-        self.endpoint_test('/resource/component', request_method='GET')
+        self.endpoint_test('/resource/component', request_method=GET)
     
     def test_branch_multiple_branches(self):
         self.api_tree = {
@@ -217,11 +214,11 @@ class TestViewKwargs(ScanTest):
         """ When the API tree branch route is a request method keyword AND a
             'request_method' value is included in the 'view_kwargs' dict, the
             API tree should override 'view_kwargs'. """
-        self.target.view_kwargs = {'request_method': 'POST'}
+        self.target.view_kwargs = {'request_method': POST}
         self.api_tree = {
-            'GET': self.target,
+            GET: self.target,
             }
-        self.endpoint_test('', request_method='GET')
+        self.endpoint_test('', request_method=GET)
 
 class TestExceptions(unittest.TestCase):
     """ Confirm that appropriate errors are raised in expected situations. """
@@ -243,7 +240,7 @@ class TestExceptions(unittest.TestCase):
             specific route; the request method does not form a part of the URL.
             """
         api_tree = {
-            'GET': {
+            GET: {
                 '/xxx': self.dummy
                 }
             }
