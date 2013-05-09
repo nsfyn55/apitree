@@ -12,8 +12,9 @@ from iomanager.iomanager import NotProvided
 from pyramid.response import Response
 
 from .view_callable import SimpleViewCallable
+from . import tree_scan
 from .tree_scan import (
-    ALL_REQUEST_METHODS,
+    ALL_REQUEST_METHOD_STRINGS,
     get_endpoints,
     )
 
@@ -129,7 +130,7 @@ class APIDocumentationMaker(object):
             for item in endpoint_list:
                 request_methods = item.get(
                     'request_method',
-                    ALL_REQUEST_METHODS,
+                    ALL_REQUEST_METHOD_STRINGS,
                     )
                 method_key = ', '.join(request_methods)
                 

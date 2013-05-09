@@ -1,3 +1,4 @@
+import itertools
 import json
 import unittest
 import pytest
@@ -111,7 +112,7 @@ class TestCreateDocumentationViewAttributes(unittest.TestCase):
         
         documentation = APIDocumentationMaker().create_documentation(api_tree)
         
-        view_dict = documentation['/'][GET]
+        view_dict = documentation['/']['GET']
         
         view_dict.pop('description', None)
         
@@ -158,7 +159,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
         
         documentation = APIDocumentationMaker().create_documentation(api_tree)
         
-        view_dict = documentation['/'][GET].copy()
+        view_dict = documentation['/']['GET'].copy()
         del view_dict['description']
         
         assert view_dict == {}
@@ -255,10 +256,14 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         api_tree = {
             '/': {request_methods: self.make_view_callable()}
             }
-        request_methods_string = ', '.join(request_methods)
+        
+        request_methods_string = ', '.join(list(itertools.chain(
+            *[item.request_method for item in request_methods]
+            )))
         
         self.location_found_test(api_tree, ['/', request_methods_string])
     
+    @pytest.mark.a
     def test_single_request_method(self):
         self.request_method_test((GET,))
     
@@ -333,7 +338,7 @@ class TestAPIDocumentationMakerAddDocumentation(unittest.TestCase):
             self.PATH,
             )
         
-        views = config.views[self.PATH][GET]
+        views = config.views[self.PATH]['GET']
         
         for iaccept in ['', 'application/json']:
             assert isinstance(
