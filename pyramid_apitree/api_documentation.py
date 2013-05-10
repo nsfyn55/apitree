@@ -11,12 +11,13 @@ from iomanager import ListOf
 from iomanager.iomanager import NotProvided
 from pyramid.response import Response
 
-from .view_callable import SimpleViewCallable
 from . import tree_scan
+from .view_callable import SimpleViewCallable
 from .tree_scan import (
     ALL_REQUEST_METHOD_STRINGS,
     get_endpoints,
     )
+from .util import is_container
 
 INDENT_STR = '    '
 
@@ -25,13 +26,6 @@ class Error(Exception):
 
 class PreparationFailureError(Error):
     """ A value failed to coerce to a string via the 'prepare' method. """
-
-def is_container(obj, classinfo):
-    """ 'obj' is an instance of 'classinfo', but is not a 'str' or 'bytes'
-        instance. """
-    if isinstance(obj, classinfo) and not isinstance(obj, (str, bytes)):
-        return True
-    return False
 
 class APIDocumentationMaker(object):
     documentation_view_class = SimpleViewCallable

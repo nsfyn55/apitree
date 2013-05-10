@@ -104,11 +104,15 @@ def test_empty_api_tree():
     assert not config.routes
 
 class ScanTest(unittest.TestCase):
-    def target(*pargs, **kwargs):
-        """ A dummy 'view_callable' object. Used as a target for tests. """
-    
-    def dummy(*pargs, **kwargs):
-        """ Another dummy 'view_callable' object. """
+    def setUp(self):
+        def target(*pargs, **kwargs):
+            """ A dummy 'view_callable' object. Used as a target for tests. """
+        
+        def dummy(*pargs, **kwargs):
+            """ Another dummy 'view_callable' object. """
+        
+        self.target = target
+        self.dummy = dummy
     
     def endpoint_test(self, path, **expected_predicates):
         expected_dict = expected_predicates.copy()
@@ -190,18 +194,17 @@ class TestBranchLocationTuples(ScanTest):
 @pytest.mark.a
 class TestBranchObjectTuples(ScanTest):
     """ Branch objects can be tuples of views or trees. """
-    @pytest.mark.x
     def test_view_tuple_duplicate_predicates_raises(self):
-        self.api_tree = {'/', (self.target, self.dummy)}
+        """ If a branch object is a tuple of views, those views must have
+            distinct predicates. """
+        self.api_tree = {'/': (self.target, self.dummy)}
         with pytest.raises(pyramid.exceptions.ConfigurationError):
             self.endpoint_test('/')
     
     @pytest.mark.b
     def test_view_tuple(self):
-        """ If a branch object is a tuple of views, those views must have
-            distinct predicates. """
         self.dummy.view_kwargs = {'predicate': 'value'}
-        self.api_tree = {'/', (self.target, self.dummy)}
+        self.api_tree = {'/': (self.target, self.dummy)}
         self.endpoint_test('/')
     
     def test_tree_tuple(self):
@@ -216,12 +219,12 @@ class TestBranchObjectTuples(ScanTest):
     
     def test_mixed_tuple(self):
         self.api_tree = {
-            '/': (
-                {'/x': self.target},
+            '/x': (
+                {'/y': self.target},
                 self.target,
                 )
             }
-        for path in ['/', '/x']:
+        for path in ['/x', '/x/y']:
             self.endpoint_test(path)
 
 class TestBranch(ScanTest):
@@ -273,13 +276,6 @@ class TestComplexBranch(ScanTest):
         self.endpoint_test('/resource/component')
 
 class TestViewKwargs(ScanTest):
-    def setUp(self):
-        def target(*pargs, **kwargs):
-            """ A view callable with a 'view_kwargs' attribute. The API tree
-                scan should automatically unpack the 'view_kwargs' when calling
-                'configurator.add_view()'. """
-        self.target = target
-    
     def test_view_kwargs(self):
         self.target.view_kwargs = {'predicate': 'predicate value'}
         self.api_tree = {

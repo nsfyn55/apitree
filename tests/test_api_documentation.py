@@ -263,7 +263,6 @@ class TestAPIDocumentationMaker(unittest.TestCase):
         
         self.location_found_test(api_tree, ['/', request_methods_string])
     
-    @pytest.mark.a
     def test_single_request_method(self):
         self.request_method_test((GET,))
     

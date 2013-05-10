@@ -1,7 +1,12 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 
+from collections.abc import (
+    Sequence,
+    Mapping,
+    )
 from copy import deepcopy
 from .exc import BadAPITreeError
+from .util import is_container
 
 class RequestMethod(object):
     """ Represents a request method predicate in an API tree. """
@@ -28,19 +33,26 @@ def conglomerate_endpoints(endpoints_dicts_list):
             views_list.extend(ivalue)
     return result
 
-def parse_branch(branch_location, branch_obj, root_path):
+def parse_branch(branch_obj, branch_location, root_path):
     """ Return value has the same format as 'get_endpoints'. """
-    if isinstance(branch_location, tuple):
+    if is_container(branch_obj, Sequence):
+        result_list = [
+            parse_branch(item, branch_location, root_path)
+            for item in branch_obj
+            ]
+        return conglomerate_endpoints(result_list)
+    
+    if is_container(branch_location, Sequence):
         if all(
             [isinstance(item, RequestMethod) for item in branch_location]
             ):
-            # branch_location is a tuple of request methods. Sum to a single
+            # 'branch_location' is a tuple of request methods. Sum to a single
             # request method.
             branch_location = sum(branch_location, RequestMethod())
             
         else:
             result_list = [
-                parse_branch(item, branch_obj, root_path)
+                parse_branch(branch_obj, item, root_path)
                 for item in branch_location
                 ]
             return conglomerate_endpoints(result_list)
@@ -62,7 +74,7 @@ def parse_branch(branch_location, branch_obj, root_path):
             .format(type(branch_path).__name__)
             )
     
-    if isinstance(branch_obj, dict):
+    if isinstance(branch_obj, Mapping):
         if request_method is not None:
             invalid_path = complete_route + '/' + str(request_method)
             raise BadAPITreeError(
@@ -89,7 +101,6 @@ def parse_branch(branch_location, branch_obj, root_path):
     
     return {complete_route: [view_dict]}
     
-
 def get_endpoints(api_tree, root_path=''):
     """ Returns a dictionary, like this:
         {
@@ -106,7 +117,7 @@ def get_endpoints(api_tree, root_path=''):
         """
     
     result_list = [
-        parse_branch(ikey, ivalue, root_path)
+        parse_branch(ivalue, ikey, root_path)
         for ikey, ivalue in api_tree.items()
         ]
     return conglomerate_endpoints(result_list)
