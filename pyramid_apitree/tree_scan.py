@@ -6,8 +6,8 @@ from collections.abc import (
     )
 from copy import deepcopy
 from .exc import (
-    BadAPITreeError,
-    BadAPITreeStructureError,
+    APITreeError,
+    APITreeStructureError,
     )
 from .util import is_container
 
@@ -66,7 +66,7 @@ def parse_branch(branch_location, branch_obj, root_path):
     try:
         complete_route = root_path + branch_path
     except TypeError:
-        raise BadAPITreeError(
+        raise APITreeError(
             "Invalid branch route object. Must be one of: a string path "
             "component ('/something'); a RequestMethod instance; or a "
             "tuple of those. Got: {}"
@@ -78,7 +78,7 @@ def parse_branch(branch_location, branch_obj, root_path):
     if is_container(branch_obj, Sequence):
         try:
             return get_endpoints(branch_obj, complete_route)
-        except BadAPITreeStructureError:
+        except APITreeStructureError:
             pass
         
         result_list = [
@@ -90,7 +90,7 @@ def parse_branch(branch_location, branch_obj, root_path):
     if isinstance(branch_obj, Mapping):
         if request_method is not None:
             invalid_path = complete_route + '/' + str(request_method)
-            raise BadAPITreeError(
+            raise APITreeError(
                 "RequestMethod-instance branch routes (GET, POST, etc.) "
                 "cannot have a dictionary of sub-routes. Invalid path: {}"
                 .format(invalid_path)
@@ -125,7 +125,7 @@ def get_pairs(api_tree):
     try:
         return [(a, b) for a, b in api_tree]
     except (TypeError, ValueError):
-        raise BadAPITreeStructureError(
+        raise APITreeStructureError(
             "'api_tree' value was not traversable. 'api_tree' must be either a "
             "dictionary or a sequence of 2-length tuples. Got: {}"
             .format(api_tree)

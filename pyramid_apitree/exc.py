@@ -3,9 +3,9 @@
 class Error(Exception):
     """ Base class for errors. """
 
-class BadAPITreeError(Error):
+class APITreeError(Error):
     """ API tree has invalid structure or composition. """
 
-class BadAPITreeStructureError(BadAPITreeError):
+class APITreeStructureError(APITreeError):
     """ API tree could not be traversed. An API tree must be either a dictionary
         or a list of 2-length tuples. """

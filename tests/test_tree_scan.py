@@ -13,7 +13,7 @@ from pyramid_apitree import (
     DELETE,
     HEAD,
     )
-from pyramid_apitree.exc import BadAPITreeError
+from pyramid_apitree.exc import APITreeError
 
 """ An example API tree.
     
@@ -334,7 +334,7 @@ class TestExceptions(unittest.TestCase):
     
     def exception_test(self, api_tree):
         configurator = MockConfigurator()
-        with pytest.raises(BadAPITreeError):
+        with pytest.raises(APITreeError):
             scan_api_tree(configurator, api_tree)
     
     def test_request_method_route_gets_dictionary(self):
