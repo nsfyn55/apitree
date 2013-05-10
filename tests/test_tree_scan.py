@@ -70,10 +70,10 @@ class MockConfigurator(object):
                 view_dict['request_method']
                 )
         
-        # 'predicates_tuple' does not include 'view_callable'.
+        # 'predicates_tuple' does not include 'view'.
         predicates_tuple = tuple(view_dict.items())
         
-        view_dict['view_callable'] = view
+        view_dict['view'] = view
         view_tuple = tuple(view_dict.items())
         
         route = self.routes[route_name]
@@ -106,13 +106,21 @@ def test_empty_api_tree():
 class ScanTest(unittest.TestCase):
     def setUp(self):
         def target(*pargs, **kwargs):
-            """ A dummy 'view_callable' object. Used as a target for tests. """
+            """ A dummy 'view callable'  object. Used as a target for tests. """
         
         def dummy(*pargs, **kwargs):
-            """ Another dummy 'view_callable' object. """
+            """ Another dummy 'view callable' object. """
         
         self.target = target
         self.dummy = dummy
+    
+    def do_scan(self):
+        self.config = MockConfigurator()
+        scan_api_tree(
+            configurator=self.config,
+            api_tree=self.api_tree,
+            root_path=''
+            )
     
     def endpoint_test(self, path, **expected_predicates):
         expected_dict = expected_predicates.copy()
@@ -121,20 +129,15 @@ class ScanTest(unittest.TestCase):
                 expected_dict['request_method']
                 )
         
-        expected_dict['view_callable'] = self.target
+        expected_dict['view'] = self.target
         
         expected = tuple(expected_dict.items())
         
-        config = MockConfigurator()
-        scan_api_tree(
-            configurator=config,
-            api_tree=self.api_tree,
-            root_path=''
-            )
+        self.do_scan()
         
-        assert path in config.routes
+        assert path in self.config.routes
         
-        assert expected in config.routes[path]['views']
+        assert expected in self.config.routes[path]['views']
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):
@@ -191,7 +194,6 @@ class TestBranchLocationTuples(ScanTest):
         with pytest.raises(pyramid.exceptions.ConfigurationError):
             self.endpoint_test('/')
 
-@pytest.mark.a
 class TestBranchObjectTuples(ScanTest):
     """ Branch objects can be tuples of views or trees. """
     def test_view_tuple_duplicate_predicates_raises(self):
@@ -201,7 +203,6 @@ class TestBranchObjectTuples(ScanTest):
         with pytest.raises(pyramid.exceptions.ConfigurationError):
             self.endpoint_test('/')
     
-    @pytest.mark.b
     def test_view_tuple(self):
         self.dummy.view_kwargs = {'predicate': 'value'}
         self.api_tree = {'/': (self.target, self.dummy)}
@@ -226,6 +227,37 @@ class TestBranchObjectTuples(ScanTest):
             }
         for path in ['/x', '/x/y']:
             self.endpoint_test(path)
+
+@pytest.mark.a
+class TestTreeListOfTuples(ScanTest):
+    """ An API tree can be a list of 2-tuples. """
+    def test_tree_list_of_tuples(self):
+        self.api_tree = [('/', self.target)]
+        self.endpoint_test('/')
+    
+    def test_branch_list_of_tuples(self):
+        self.api_tree = {
+            '/a': [('/b', self.target)]
+            }
+        self.endpoint_test('/a/b')
+    
+    def test_order_preserved_before(self):
+        """ Using the 'list of 2-tuples' style preserves the order in which
+            views are added to the Pyramid configurator. """
+        # Distinct predicate values.
+        self.target.view_kwargs = {'a': 'b'}
+        
+        self.api_tree = [
+            ('/', self.target),
+            ('/', self.dummy),
+            ]
+        self.do_scan()
+        
+        views = [
+            dict(item)['view']
+            for item in self.config.routes['/']['views']
+            ]
+        assert views == [self.target, self.dummy]
 
 class TestBranch(ScanTest):
     def test_branch_no_request_method(self):
