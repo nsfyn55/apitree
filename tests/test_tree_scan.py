@@ -3,9 +3,11 @@
 import unittest
 import pyramid.exceptions
 import pytest
+from copy import deepcopy
 
 from pyramid_apitree import (
     scan_api_tree,
+    add_catchall,
     RequestMethod,
     GET,
     POST,
@@ -14,6 +16,7 @@ from pyramid_apitree import (
     HEAD,
     )
 from pyramid_apitree.exc import APITreeError
+from pyramid_apitree.util import is_container
 
 """ An example API tree.
     
@@ -45,17 +48,17 @@ from pyramid_apitree.exc import APITreeError
     
     """
 
-def make_tuple(value):
+def make_set(value):
     if isinstance(value, tuple):
-        return value
-    return (value, )
+        return set(value)
+    return set((value, ))
 
-def make_request_method_tuple(value):
+def make_request_method_set(value):
     """ Converts RequestMethod instances into request method strings. All
         results are tuples. """
     if isinstance(value, tuple):
-        return sum(value, RequestMethod()).request_method
-    return value.request_method
+        return set(sum(value, RequestMethod()).request_method)
+    return set(value.request_method)
 
 class MockConfigurator(object):
     """ A mocked Pyramid configurator. """
@@ -66,26 +69,25 @@ class MockConfigurator(object):
         view_dict = kwargs.copy()
         
         if 'request_method' in view_dict:
-            view_dict['request_method'] = make_tuple(
+            view_dict['request_method'] = make_set(
                 view_dict['request_method']
                 )
         
-        # 'predicates_tuple' does not include 'view'.
-        predicates_tuple = tuple(view_dict.items())
+        # 'predicates_dict' does not include 'view'.
+        predicates_dict = deepcopy(view_dict)
         
         view_dict['view'] = view
-        view_tuple = tuple(view_dict.items())
         
         route = self.routes[route_name]
         
-        if predicates_tuple in route['predicates']:
+        if predicates_dict in route['predicates']:
             raise pyramid.exceptions.ConfigurationError(
                 "A view with this 'route_name' and predicates has already been "
-                "added: {}, {}".format(route_name, predicates_tuple)
+                "added: {}, {}".format(route_name, predicates_dict)
                 )
         
-        route['predicates'].append(predicates_tuple)
-        route['views'].append(view_tuple)
+        route['predicates'].append(predicates_dict)
+        route['views'].append(view_dict)
     
     def add_route(self, name, pattern):
         assert name == pattern
@@ -102,6 +104,38 @@ def test_empty_api_tree():
     scan_api_tree(config, api_tree)
     
     assert not config.routes
+
+class TestExceptions(unittest.TestCase):
+    """ Confirm that appropriate errors are raised in expected situations. """
+    def setUp(self):
+        def dummy(*pargs, **kwargs):
+            """ A dummy view callable. """
+        self.dummy = dummy
+    
+    def exception_test(self, api_tree):
+        configurator = MockConfigurator()
+        with pytest.raises(APITreeError):
+            scan_api_tree(configurator, api_tree)
+    
+    def test_request_method_route_gets_dictionary(self):
+        """ When a request-method-specific-route (i.e. '/GET') is assigned a
+            dictionary value in the API tree, an error should be raised.
+            
+            This is because it is impossible to build upon a request-method-
+            specific route; the request method does not form a part of the URL.
+            """
+        api_tree = {
+            GET: {
+                '/xxx': self.dummy
+                }
+            }
+        self.exception_test(api_tree)
+    
+    def test_invalid_branch_route_object(self):
+        """ A 'branch route' is something besides a string, a request method
+            string, or a tuple of request methods. """
+        api_tree = {object(): self.dummy}
+        self.exception_test(api_tree)
 
 class ScanTest(unittest.TestCase):
     def setUp(self):
@@ -122,28 +156,42 @@ class ScanTest(unittest.TestCase):
             root_path=''
             )
     
-    def endpoint_test(self, path, **expected_predicates):
+    def prepare_endpoint_test(self, paths, do_scan=True, **expected_predicates):
+        if not is_container(paths, (list, tuple)):
+            paths = tuple([paths])
+        
         expected_dict = expected_predicates.copy()
         if 'request_method' in expected_dict:
-            expected_dict['request_method'] = make_request_method_tuple(
+            expected_dict['request_method'] = make_request_method_set(
                 expected_dict['request_method']
                 )
         
         expected_dict['view'] = self.target
         
-        expected = tuple(expected_dict.items())
+        if do_scan:
+            self.do_scan()
         
-        self.do_scan()
+        for path in paths:
+            assert path in self.config.routes
         
-        assert path in self.config.routes
+        return paths, expected_dict
+    
+    def endpoint_test(self, *pargs, **kwargs):
+        paths, expected = self.prepare_endpoint_test(*pargs, **kwargs)
+        for path in paths:
+            assert expected in self.config.routes[path]['views']
+    
+    def endpoint_missing_test(self, *pargs, **kwargs):
+        paths, expected = self.prepare_endpoint_test(*pargs, **kwargs)
         
-        assert expected in self.config.routes[path]['views']
+        for path in paths:
+            assert expected not in self.config.routes[path]['views']
 
 class TestRequestMethods(ScanTest):
     def request_method_test(self, request_method):
         self.api_tree = {request_method: self.target}
         # Use an empty string ('') for root.
-        self.endpoint_test(path='', request_method=request_method)
+        self.endpoint_test('', request_method=request_method)
     
     def test_GET_method(self):
         self.request_method_test(request_method=GET)
@@ -166,15 +214,14 @@ class TestRequestMethodsMultipleEndpoints(ScanTest):
             GET: self.dummy,
             POST: self.target,
             }
-        self.endpoint_test(path='', request_method=POST)
+        self.endpoint_test('', request_method=POST)
 
 class TestBranchLocationTuples(ScanTest):
     """ Branch locations can be tuples of paths and/or request methods. """
     def test_path_tuple(self):
         paths = ('/a', '/b')
         self.api_tree = {paths: self.target}
-        for item in paths:
-            self.endpoint_test(item)
+        self.endpoint_test(paths)
     
     def test_request_method_tuple(self):
         methods = (GET, POST)
@@ -186,8 +233,8 @@ class TestBranchLocationTuples(ScanTest):
             '/a': self.target,
             GET: self.target,
             }
-        self.endpoint_test(path='/a')
-        self.endpoint_test(path='', request_method=GET)
+        self.endpoint_test('/a')
+        self.endpoint_test('', request_method=GET)
     
     def test_duplicate_paths_raises(self):
         self.api_tree = {('/', '/'): self.target,}
@@ -215,8 +262,7 @@ class TestBranchObjectTuples(ScanTest):
                 {'/y': self.target},
                 )
             }
-        for path in ['/a/x', '/a/y']:
-            self.endpoint_test(path)
+        self.endpoint_test(['/a/x', '/a/y'])
     
     def test_mixed_tuple(self):
         self.api_tree = {
@@ -225,10 +271,8 @@ class TestBranchObjectTuples(ScanTest):
                 self.target,
                 )
             }
-        for path in ['/x', '/x/y']:
-            self.endpoint_test(path)
+        self.endpoint_test(['/x', '/x/y'])
 
-@pytest.mark.a
 class TestTreeListOfTuples(ScanTest):
     """ An API tree can be a list of 2-tuples. """
     def test_tree_list_of_tuples(self):
@@ -325,39 +369,258 @@ class TestViewKwargs(ScanTest):
             }
         self.endpoint_test('', request_method=GET)
 
-class TestExceptions(unittest.TestCase):
-    """ Confirm that appropriate errors are raised in expected situations. """
+class TestAddCatchall(ScanTest):
+    """ Test 'add_catchall' function. """
+    
+    class DummyViewCallableBase(object):
+        def __init__(self, **predicates):
+            if not predicates:
+                predicates = self.default_predicates.copy()
+            self.view_kwargs = predicates
+        
+        def __call__(self, *pargs, **kwargs):
+            pass
+    
+    class DummyViewCallableA(DummyViewCallableBase):
+        default_predicates = {'a': 'a'}
+    
+    class DummyViewCallableB(DummyViewCallableA):
+        default_predicates = {'b': 'b'}
+    
+    class DummyViewCallableC(DummyViewCallableA):
+        default_predicates = {'c': 'c'}
+    
+    class DummyViewCallableQ(DummyViewCallableBase):
+        default_predicates = {'q': 'q'}
+    
     def setUp(self):
-        def dummy(*pargs, **kwargs):
-            """ A dummy view callable. """
-        self.dummy = dummy
+        """ The 'catchall' view callable (in this case, 'target') must have
+            distinct predicates to avoid raising a
+            pyramid.exceptions.ConfigurationError. """
+        super().setUp()
+        #self.target.view_kwargs = {'x': 'y'}
+        self.target.view_kwargs = {}
+        self.dummy.view_kwargs = {}
     
-    def exception_test(self, api_tree):
-        configurator = MockConfigurator()
-        with pytest.raises(APITreeError):
-            scan_api_tree(configurator, api_tree)
+    def prepare_endpoint_test(self, *pargs, **kwargs):
+        """ Prevent premature API tree scan. """
+        return super().prepare_endpoint_test(do_scan=False, *pargs, **kwargs)
     
-    def test_request_method_route_gets_dictionary(self):
-        """ When a request-method-specific-route (i.e. '/GET') is assigned a
-            dictionary value in the API tree, an error should be raised.
+    def add_target_catchall(self, **kwargs):
+        add_catchall(
+            configurator=self.config,
+            api_tree=self.api_tree,
+            catchall=self.target,
+            **kwargs
+            )
+    
+    def prepare_catchall(self, **kwargs):
+        self.do_scan()
+        self.add_target_catchall(**kwargs)
+    
+    def catchall_endpoint_test(self, paths, **kwargs):
+        expected = getattr(self.target, 'view_kwargs', {}).copy()
+        expected.update(kwargs)
+        self.endpoint_test(paths, **expected)
+    
+    def catchall_test(self, paths, **kwargs):
+        self.target.view_kwargs.update({'x': 'y'})
+        self.prepare_catchall()
+        self.catchall_endpoint_test(paths, **kwargs)
+    
+    # ---------------------- Baseline conditions -----------------------
+    
+    def test_duplicate_predicates_raises(self):
+        assert self.target.view_kwargs == self.dummy.view_kwargs
+        self.api_tree = {'/': self.dummy}
+        self.do_scan()
+        with pytest.raises(pyramid.exceptions.ConfigurationError):
+            self.add_target_catchall()
+    
+    def test_missing_view_kwargs_passes(self):
+        del self.target.view_kwargs
+        self.api_tree = {'/': self.DummyViewCallableA()}
+        self.do_scan()
+        self.add_target_catchall()
+    
+    # ----------------------- Predicate sources ------------------------
+    
+    def test_predicates_from_catchall_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        self.catchall_test('/')
+    
+    def test_predicates_from_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        expected = {'x': 'y'}
+        self.prepare_catchall(view_kwargs=expected)
+        self.catchall_endpoint_test('/', **expected)
+    
+    def test_predicates_from_additional_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        expected = {'x': 'y'}
+        self.prepare_catchall(additional_view_kwargs=expected)
+        self.catchall_endpoint_test('/', **expected)
+    
+    def test_view_kwargs_replaces_catchall_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        expected = {'x': 'y'}
+        self.target.view_kwargs = {'a': 'b'}
+        self.prepare_catchall(view_kwargs=expected)
+        self.endpoint_test('/', **expected)
+    
+    def test_additional_view_kwargs_updates_catchall_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        self.target.view_kwargs = {'a': 'b', 'c': 'd'}
+        self.prepare_catchall(additional_view_kwargs={'c': 'm', 'x': 'y'})
+        self.catchall_endpoint_test('/', **{'a': 'b', 'c': 'm', 'x': 'y'})
+    
+    def test_additional_view_kwargs_updates_view_kwargs(self):
+        self.api_tree = {'/': self.dummy}
+        self.prepare_catchall(
+            view_kwargs = {'a': 'b', 'c': 'd'},
+            additional_view_kwargs={'c': 'm', 'x': 'y'},
+            )
+        self.catchall_endpoint_test('/', **{'a': 'b', 'c': 'm', 'x': 'y'})
+    
+    # ------------------- 'request_method' predicate -------------------
+    
+    def test_request_method_copied_from_api_tree(self):
+        """ Catchall copies the request method when the request method is
+            specified in the API tree.
             
-            This is because it is impossible to build upon a request-method-
-            specific route; the request method does not form a part of the URL.
-            """
-        api_tree = {
-            GET: {
-                '/xxx': self.dummy
-                }
+            This test also confirms that catchall 'view_kwargs' values
+            compliment 'request_method' value from subject views. """
+        self.api_tree = {GET: self.dummy}
+        self.catchall_test('', request_method=GET)
+    
+    def test_request_method_multiple_copied_from_api_tree(self):
+        self.api_tree = {
+            GET: self.DummyViewCallableA(),
+            POST: self.DummyViewCallableA(),
             }
-        self.exception_test(api_tree)
+        self.catchall_test('', request_method=(GET, POST))
     
-    def test_invalid_branch_route_object(self):
-        """ A 'branch route' is something besides a string, a request method
-            string, or a tuple of request methods. """
-        api_tree = {object(): self.dummy}
-        self.exception_test(api_tree)
+    def test_request_method_copied_from_subject_view_kwargs(self):
+        """ Catchall copies 'request_method' when the request method is
+            specified in 'view_kwargs' of view callable to which catchall is
+            applied. """
+        self.dummy.view_kwargs['request_method'] = 'GET'
+        self.api_tree = {'/': self.dummy}
+        self.catchall_test('/', request_method=GET)
     
+    def test_catchall_view_kwargs_overrides_request_method(self):
+        """ When catchall 'view_kwargs' specifies 'request_method', it overrides
+            'request_method' from subject view.
+            
+            Note: When catchall 'view_kwargs' does not specify 'request_method',
+            'request_method' from subject view is used. This is tested by
+            'test_request_method_copied_from_api_tree'. """
+        self.target.view_kwargs['request_method'] = 'GET'
+        self.api_tree = {POST: self.dummy}
+        self.catchall_test('', request_method=GET)
     
+    def test_view_kwargs_overrides_request_method(self):
+        """ When 'add_catchall' 'view_kwargs' argument specifies
+            'request_method', it overrides 'request_method' from subject
+            view. """
+        self.api_tree = {POST: self.dummy}
+        self.prepare_catchall(view_kwargs={'request_method': 'GET'})
+        self.catchall_endpoint_test('', **{'request_method': GET})
+    
+    def test_view_kwargs_compliments_request_method(self):
+        """ When 'add_catchall' 'view_kwargs' argument does not specify
+            'request_method', 'request_method' from subject view is used. """
+        self.api_tree = {POST: self.dummy}
+        self.prepare_catchall(view_kwargs={'x': 'y'})
+        self.catchall_endpoint_test('', **{'x': 'y', 'request_method': POST})
+    
+    # ---------------- Catchall added to subject views -----------------
+    
+    def test_single_view(self):
+        """ Path with single view callable. """
+        self.api_tree = {'/': self.dummy}
+        self.catchall_test('/')
+    
+    def test_multiple_views(self):
+        """ Path with multiple view callables. """
+        self.api_tree = {
+            '/': (
+                self.DummyViewCallableA(),
+                self.DummyViewCallableB(),
+                )
+            }
+        self.catchall_test('/')
+    
+    def test_multiple_routes(self):
+        """ Multiple paths. """
+        self.api_tree = {
+            '/a': self.DummyViewCallableA(),
+            '/b': self.DummyViewCallableB(),
+            }
+        self.catchall_test(['/a', '/b'])
+    
+    # --------- Catchall added to specific subject view class ----------
+    
+    def test_specific_type(self):
+        """ Add catchall only to views of a specific type. """
+        self.api_tree = {
+            '/a': self.DummyViewCallableA(),
+            '/b': self.DummyViewCallableB(),
+            }
+        
+        self.prepare_catchall(target_classinfo=self.DummyViewCallableB)
+        self.endpoint_test('/b')
+        self.endpoint_missing_test('/a')
+    
+    def test_parent_type(self):
+        """ Add catchall to all views descended from a specific type. """
+        self.api_tree = {
+            '/a': self.DummyViewCallableA(),
+            '/b': self.DummyViewCallableB(),
+            '/q': self.DummyViewCallableQ(),
+            }
+        self.prepare_catchall(target_classinfo=self.DummyViewCallableA)
+        self.endpoint_test(['/a', '/b'])
+        self.endpoint_missing_test('/q')
+    
+    def test_specific_type_multiple_views(self):
+        self.api_tree = {
+            '/': (
+                self.DummyViewCallableA(a='a'),
+                self.DummyViewCallableB(b='b'),
+                ),
+            '/q': self.DummyViewCallableQ(),
+            }
+        self.prepare_catchall(target_classinfo=self.DummyViewCallableB)
+        self.endpoint_test('/')
+        self.endpoint_missing_test('/q')
+    
+    def test_multiple_types(self):
+        """ 'target_classinfo' is a tuple of classes. """
+        self.api_tree = {
+            '/b': self.DummyViewCallableB(),
+            '/c': self.DummyViewCallableC(),
+            '/q': self.DummyViewCallableQ(),
+            }
+        self.prepare_catchall(
+            target_classinfo=(self.DummyViewCallableB, self.DummyViewCallableC)
+            )
+        self.endpoint_test(['/b', '/c'])
+        self.endpoint_missing_test('/q')
+    
+    def test_strict(self):
+        """ When 'strict' is True, subject views must be instances of exactly
+            'target_classinfo'; subclass instances are ignored. """
+        self.api_tree = {
+            '/a': self.DummyViewCallableA(),
+            '/b': self.DummyViewCallableB(),
+            }
+        self.prepare_catchall(
+            target_classinfo=self.DummyViewCallableA,
+            strict=True,
+            )
+        self.endpoint_test('/a')
+        self.endpoint_missing_test('/b')
 
 
 

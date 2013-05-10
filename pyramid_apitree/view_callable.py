@@ -132,7 +132,7 @@ class APIViewCallable(FunctionViewCallable):
             if ikey not in ['required', 'optional', 'unlimited', 'returns']
             }
         
-        super(APIViewCallable, self).setup(remaining_kwargs)
+        super().setup(remaining_kwargs)
     
     def wrapped_call(self, **kwargs):
         coerced_kwargs = self.manager.coerce_input(kwargs)
