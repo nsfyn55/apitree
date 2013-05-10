@@ -5,7 +5,10 @@ from collections.abc import (
     Mapping,
     )
 from copy import deepcopy
-from .exc import BadAPITreeError
+from .exc import (
+    BadAPITreeError,
+    BadAPITreeStructureError,
+    )
 from .util import is_container
 
 class RequestMethod(object):
@@ -33,14 +36,10 @@ def conglomerate_endpoints(endpoints_dicts_list):
             views_list.extend(ivalue)
     return result
 
-def parse_branch(branch_obj, branch_location, root_path):
+def parse_branch(branch_location, branch_obj, root_path):
     """ Return value has the same format as 'get_endpoints'. """
-    if is_container(branch_obj, Sequence):
-        result_list = [
-            parse_branch(item, branch_location, root_path)
-            for item in branch_obj
-            ]
-        return conglomerate_endpoints(result_list)
+    
+    # ---------------------- Parse 'branch_location'. ----------------------
     
     if is_container(branch_location, Sequence):
         if all(
@@ -52,7 +51,7 @@ def parse_branch(branch_obj, branch_location, root_path):
             
         else:
             result_list = [
-                parse_branch(branch_obj, item, root_path)
+                parse_branch(item, branch_obj, root_path)
                 for item in branch_location
                 ]
             return conglomerate_endpoints(result_list)
@@ -74,6 +73,20 @@ def parse_branch(branch_obj, branch_location, root_path):
             .format(type(branch_path).__name__)
             )
     
+    # ----------------------- Parse 'branch_object'. -----------------------
+    
+    if is_container(branch_obj, Sequence):
+        try:
+            return get_endpoints(branch_obj, complete_route)
+        except BadAPITreeStructureError:
+            pass
+        
+        result_list = [
+            parse_branch(branch_location, item, root_path)
+            for item in branch_obj
+            ]
+        return conglomerate_endpoints(result_list)
+    
     if isinstance(branch_obj, Mapping):
         if request_method is not None:
             invalid_path = complete_route + '/' + str(request_method)
@@ -85,7 +98,8 @@ def parse_branch(branch_obj, branch_location, root_path):
         
         return get_endpoints(branch_obj, complete_route)
     
-    # Branch contains a single view.
+    # ------------- 'branch_object' is a single view callable. -------------
+    
     view_dict = {}
     
     view_callable = branch_obj
@@ -100,6 +114,22 @@ def parse_branch(branch_obj, branch_location, root_path):
         view_dict['request_method'] = request_method
     
     return {complete_route: [view_dict]}
+
+def get_pairs(api_tree):
+    """ 'api_tree' must be either a dictionary or a list of 2-length tuples. """
+    try:
+        return api_tree.items()
+    except AttributeError:
+        pass
+    
+    try:
+        return [(a, b) for a, b in api_tree]
+    except (TypeError, ValueError):
+        raise BadAPITreeStructureError(
+            "'api_tree' value was not traversable. 'api_tree' must be either a "
+            "dictionary or a sequence of 2-length tuples. Got: {}"
+            .format(api_tree)
+            )
     
 def get_endpoints(api_tree, root_path=''):
     """ Returns a dictionary, like this:
@@ -115,10 +145,11 @@ def get_endpoints(api_tree, root_path=''):
             }
         
         """
+    pairs = get_pairs(api_tree)
     
     result_list = [
-        parse_branch(ivalue, ikey, root_path)
-        for ikey, ivalue in api_tree.items()
+        parse_branch(branch_location, branch_object, root_path)
+        for branch_location, branch_object in pairs
         ]
     return conglomerate_endpoints(result_list)
 
