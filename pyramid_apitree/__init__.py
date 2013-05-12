@@ -3,6 +3,7 @@
 from .api_documentation import APIDocumentationMaker
 from .tree_scan import (
     scan_api_tree,
+    add_catchall,
     RequestMethod,
     GET,
     POST,

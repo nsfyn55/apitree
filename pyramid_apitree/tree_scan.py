@@ -4,7 +4,6 @@ from collections.abc import (
     Sequence,
     Mapping,
     )
-from copy import deepcopy
 from .exc import (
     APITreeError,
     APITreeStructureError,
@@ -164,6 +163,87 @@ def scan_api_tree(configurator, api_tree, root_path=''):
                 route_name=complete_route,
                 **view_dict
                 )
+
+def add_catchall(
+    configurator,
+    api_tree,
+    catchall,
+    view_kwargs=None,
+    additional_view_kwargs={},
+    target_classinfo=None,
+    strict=False,
+    ):
+    """ Add a 'catchall' view callable to an API tree.
+        
+        By default, the catchall is added to every route in the API tree.
+        
+        If 'target_class' is specified, the catchall will only be added to
+        routes where a view callable of 'target_class' has been registered.
+        
+        'catchall' MUST have distinct predicates for EVERY route where it will
+        be registered; otherwise a pyramid.exceptions.ConfigurationError will
+        be raised. """
+    
+    def get_catchall_kwargs(
+        catchall, view_dicts_list, view_kwargs, additional_view_kwargs
+        ):
+        request_method_list = []
+        for imethod in [
+            item.get('request_method', tuple()) for item in view_dicts_list
+            ]:
+            if not is_container(imethod, Sequence):
+                imethod = (imethod, )
+            request_method_list.extend(imethod)
+        request_method = tuple(set(request_method_list))
+        
+        result = {}
+        if request_method:
+            result.update({'request_method': request_method})
+        
+        if view_kwargs:
+            result.update(view_kwargs)
+        else:
+            result.update(getattr(catchall, 'view_kwargs', {}))
+        
+        result.update(additional_view_kwargs)
+        
+        return result
+    
+    def strict_test(view_dict):
+        subject_type = type(view_dict['view'])
+        for iclass in target_classinfo:
+            if subject_type is iclass:
+                return True
+        return False
+    
+    def nonstrict_test(view_dict):
+        print(target_classinfo)
+        return isinstance(view_dict['view'], target_classinfo)
+    
+    target_test = strict_test if strict else nonstrict_test
+    
+    endpoints = get_endpoints(api_tree)
+    
+    for complete_route, view_dicts_list in endpoints.items():
+        if target_classinfo is not None:
+            if not isinstance(target_classinfo, tuple):
+                target_classinfo = (target_classinfo, )
+            if not any(map(target_test, view_dicts_list)):
+                continue
+        
+        catchall_kwargs = get_catchall_kwargs(
+            catchall, view_dicts_list, view_kwargs, additional_view_kwargs
+            )
+        
+        catchall_kwargs.update(additional_view_kwargs)
+        
+        configurator.add_view(
+            route_name=complete_route,
+            view=catchall,
+            **catchall_kwargs
+            )
+    
+    
 
 
 
