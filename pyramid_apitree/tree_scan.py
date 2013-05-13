@@ -217,7 +217,6 @@ def add_catchall(
         return False
     
     def nonstrict_test(view_dict):
-        print(target_classinfo)
         return isinstance(view_dict['view'], target_classinfo)
     
     target_test = strict_test if strict else nonstrict_test

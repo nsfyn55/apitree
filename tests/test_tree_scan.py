@@ -3,6 +3,7 @@
 import unittest
 import pyramid.exceptions
 import pytest
+from contextlib import contextmanager
 from copy import deepcopy
 
 from pyramid_apitree import (
@@ -15,6 +16,7 @@ from pyramid_apitree import (
     DELETE,
     HEAD,
     )
+import pyramid_apitree.tree_scan
 from pyramid_apitree.exc import APITreeError
 from pyramid_apitree.util import is_container
 
@@ -372,33 +374,31 @@ class TestViewKwargs(ScanTest):
 class TestAddCatchall(ScanTest):
     """ Test 'add_catchall' function. """
     
-    class DummyViewCallableBase(object):
+    class DummyViewCallable(object):
+        """ Base class for dummy view callables. """
         def __init__(self, **predicates):
-            if not predicates:
-                predicates = self.default_predicates.copy()
             self.view_kwargs = predicates
         
         def __call__(self, *pargs, **kwargs):
             pass
     
-    class DummyViewCallableA(DummyViewCallableBase):
-        default_predicates = {'a': 'a'}
+    class DummyViewCallableA(DummyViewCallable):
+        pass
     
     class DummyViewCallableB(DummyViewCallableA):
-        default_predicates = {'b': 'b'}
+        pass
     
     class DummyViewCallableC(DummyViewCallableA):
-        default_predicates = {'c': 'c'}
+        pass
     
-    class DummyViewCallableQ(DummyViewCallableBase):
-        default_predicates = {'q': 'q'}
+    class DummyViewCallableQ(DummyViewCallable):
+        pass
     
     def setUp(self):
         """ The 'catchall' view callable (in this case, 'target') must have
             distinct predicates to avoid raising a
             pyramid.exceptions.ConfigurationError. """
         super().setUp()
-        #self.target.view_kwargs = {'x': 'y'}
         self.target.view_kwargs = {}
         self.dummy.view_kwargs = {}
     
@@ -418,26 +418,42 @@ class TestAddCatchall(ScanTest):
         self.do_scan()
         self.add_target_catchall(**kwargs)
     
-    def catchall_endpoint_test(self, paths, **kwargs):
-        expected = getattr(self.target, 'view_kwargs', {}).copy()
+    def prepare_endpoint_expected(self, **kwargs):
+        expected = {}
+        if hasattr(self.target, 'catchall_custom_predicate'):
+            expected['custom_predicates'] = (
+                self.target.catchall_custom_predicate,
+                )
         expected.update(kwargs)
+        return expected
+    
+    def catchall_endpoint_test(self, paths, **kwargs):
+        expected = self.prepare_endpoint_expected(**kwargs)
         self.endpoint_test(paths, **expected)
     
+    def catchall_endpoint_missing_test(self, paths, **kwargs):
+        expected = self.prepare_endpoint_expected(**kwargs)
+        self.endpoint_missing_test(paths, **expected)
+    
     def catchall_test(self, paths, **kwargs):
-        self.target.view_kwargs.update({'x': 'y'})
         self.prepare_catchall()
         self.catchall_endpoint_test(paths, **kwargs)
     
-    # ---------------------- Baseline conditions -----------------------
+    # --------------------- 'add_catchall' passes. ---------------------
     
-    def test_duplicate_predicates_raises(self):
+    def test_duplicate_predicates_passes(self):
+        """ By default, 'add_catchall' adds a custom predicate to the 'catchall'
+            view callable. This custom predicate allows the catchall to be added
+            to any route; if predicate checks for all other views at that route
+            fail, the 'catchall' view callable will be called. """
         assert self.target.view_kwargs == self.dummy.view_kwargs
         self.api_tree = {'/': self.dummy}
         self.do_scan()
-        with pytest.raises(pyramid.exceptions.ConfigurationError):
-            self.add_target_catchall()
+        self.add_target_catchall()
     
     def test_missing_view_kwargs_passes(self):
+        """ 'add_catchall' passes when the catchall has no 'view_kwargs'
+            attribute. """
         del self.target.view_kwargs
         self.api_tree = {'/': self.DummyViewCallableA()}
         self.do_scan()
@@ -445,28 +461,30 @@ class TestAddCatchall(ScanTest):
     
     # ----------------------- Predicate sources ------------------------
     
-    def test_predicates_from_catchall_view_kwargs(self):
+    @contextmanager
+    def predicates_test_context(self):
+        expected = {'x': 'y'}
         self.api_tree = {'/': self.dummy}
-        self.catchall_test('/')
+        yield expected
+        self.catchall_endpoint_test('/', **expected)
+    
+    def test_predicates_from_catchall_view_kwargs(self):
+        with self.predicates_test_context() as expected:
+            self.target.view_kwargs = expected.copy()
+            self.prepare_catchall()
     
     def test_predicates_from_view_kwargs(self):
-        self.api_tree = {'/': self.dummy}
-        expected = {'x': 'y'}
-        self.prepare_catchall(view_kwargs=expected)
-        self.catchall_endpoint_test('/', **expected)
+        with self.predicates_test_context() as expected:
+            self.prepare_catchall(view_kwargs=expected)
     
     def test_predicates_from_additional_view_kwargs(self):
-        self.api_tree = {'/': self.dummy}
-        expected = {'x': 'y'}
-        self.prepare_catchall(additional_view_kwargs=expected)
-        self.catchall_endpoint_test('/', **expected)
+        with self.predicates_test_context() as expected:
+            self.prepare_catchall(additional_view_kwargs=expected)
     
     def test_view_kwargs_replaces_catchall_view_kwargs(self):
-        self.api_tree = {'/': self.dummy}
-        expected = {'x': 'y'}
-        self.target.view_kwargs = {'a': 'b'}
-        self.prepare_catchall(view_kwargs=expected)
-        self.endpoint_test('/', **expected)
+        with self.predicates_test_context() as expected:
+            self.target.view_kwargs = {'a': 'b'}
+            self.prepare_catchall(view_kwargs=expected)
     
     def test_additional_view_kwargs_updates_catchall_view_kwargs(self):
         self.api_tree = {'/': self.dummy}
@@ -482,7 +500,7 @@ class TestAddCatchall(ScanTest):
             )
         self.catchall_endpoint_test('/', **{'a': 'b', 'c': 'm', 'x': 'y'})
     
-    # ------------------- 'request_method' predicate -------------------
+    # --------------- 'request_method' predicate sources ---------------
     
     def test_request_method_copied_from_api_tree(self):
         """ Catchall copies the request method when the request method is
@@ -508,31 +526,81 @@ class TestAddCatchall(ScanTest):
         self.api_tree = {'/': self.dummy}
         self.catchall_test('/', request_method=GET)
     
+    # ------------------- Predicate sources priority -------------------
+    
+    @contextmanager
+    def overrides_request_method_test_context(self):
+        self.api_tree = {POST: self.dummy}
+        yield
+        self.catchall_endpoint_test('', **{'request_method': GET})
+    
+    @contextmanager
+    def compliments_request_method_test_context(self):
+        self.api_tree = {POST: self.dummy}
+        yield
+        self.catchall_endpoint_test('', **{'x': 'y', 'request_method': POST})
+    
     def test_catchall_view_kwargs_overrides_request_method(self):
         """ When catchall 'view_kwargs' specifies 'request_method', it overrides
-            'request_method' from subject view.
-            
-            Note: When catchall 'view_kwargs' does not specify 'request_method',
-            'request_method' from subject view is used. This is tested by
-            'test_request_method_copied_from_api_tree'. """
-        self.target.view_kwargs['request_method'] = 'GET'
-        self.api_tree = {POST: self.dummy}
-        self.catchall_test('', request_method=GET)
+            'request_method' from subject view. """
+        with self.overrides_request_method_test_context():
+            self.target.view_kwargs.update({'request_method': 'GET'})
+            self.prepare_catchall()
+    
+    def test_catchall_view_kwargs_compliments_request_method(self):
+        """ When catchall 'view_kwargs' does not specify 'request_method',
+            'request_method' from subject view is used. """
+        with self.compliments_request_method_test_context():
+            self.target.view_kwargs.update({'x': 'y'})
+            self.prepare_catchall()
     
     def test_view_kwargs_overrides_request_method(self):
         """ When 'add_catchall' 'view_kwargs' argument specifies
             'request_method', it overrides 'request_method' from subject
             view. """
-        self.api_tree = {POST: self.dummy}
-        self.prepare_catchall(view_kwargs={'request_method': 'GET'})
-        self.catchall_endpoint_test('', **{'request_method': GET})
+        with self.overrides_request_method_test_context():
+            self.prepare_catchall(view_kwargs={'request_method': 'GET'})
     
     def test_view_kwargs_compliments_request_method(self):
         """ When 'add_catchall' 'view_kwargs' argument does not specify
             'request_method', 'request_method' from subject view is used. """
-        self.api_tree = {POST: self.dummy}
-        self.prepare_catchall(view_kwargs={'x': 'y'})
-        self.catchall_endpoint_test('', **{'x': 'y', 'request_method': POST})
+        with self.compliments_request_method_test_context():
+            self.prepare_catchall(view_kwargs={'x': 'y'})
+    
+    @contextmanager
+    def overrides_custom_predicates_test_context(self):
+        self.api_tree = {'/': self.dummy}
+        yield
+        self.catchall_endpoint_test('/', **{'custom_predicates': 'xxx'})
+    
+    @contextmanager
+    def compliments_custom_predicates_test_context(self):
+        self.api_tree = {'/': self.dummy}
+        yield
+        self.catchall_endpoint_test('/', **{
+            'x': 'y',
+            'custom_predicates': (
+                pyramid_apitree.tree_scan.catchall_custom_predicate,
+                )
+            })
+    
+    def test_catchall_view_kwargs_overrides_custom_predicates(self):
+        with self.overrides_custom_predicates_test_context():
+            self.target.view_kwargs.update({'custom_predicates': 'xxx'})
+            self.prepare_catchall()
+    
+    def test_catchall_view_kwargs_compliments_custom_predicates(self):
+        with self.compliments_custom_predicates_test_context():
+            self.target.view_kwargs.update({'x': 'y'})
+            self.prepare_catchall()
+    
+    def test_view_kwargs_overrides_custom_predicates(self):
+        with self.overrides_custom_predicates_test_context():
+            self.prepare_catchall(view_kwargs={'custom_predicates': 'xxx'})
+    
+    def test_view_kwargs_compliments_custom_predicates(self):
+        with self.compliments_custom_predicates_test_context():
+            self.prepare_catchall(view_kwargs={'x': 'y'})
     
     # ---------------- Catchall added to subject views -----------------
     
@@ -545,8 +613,8 @@ class TestAddCatchall(ScanTest):
         """ Path with multiple view callables. """
         self.api_tree = {
             '/': (
-                self.DummyViewCallableA(),
-                self.DummyViewCallableB(),
+                self.DummyViewCallableA(a='a'),
+                self.DummyViewCallableB(b='b'),
                 )
             }
         self.catchall_test('/')
@@ -569,8 +637,8 @@ class TestAddCatchall(ScanTest):
             }
         
         self.prepare_catchall(target_classinfo=self.DummyViewCallableB)
-        self.endpoint_test('/b')
-        self.endpoint_missing_test('/a')
+        self.catchall_endpoint_test('/b')
+        self.catchall_endpoint_missing_test('/a')
     
     def test_parent_type(self):
         """ Add catchall to all views descended from a specific type. """
@@ -580,8 +648,8 @@ class TestAddCatchall(ScanTest):
             '/q': self.DummyViewCallableQ(),
             }
         self.prepare_catchall(target_classinfo=self.DummyViewCallableA)
-        self.endpoint_test(['/a', '/b'])
-        self.endpoint_missing_test('/q')
+        self.catchall_endpoint_test(['/a', '/b'])
+        self.catchall_endpoint_missing_test('/q')
     
     def test_specific_type_multiple_views(self):
         self.api_tree = {
@@ -592,8 +660,8 @@ class TestAddCatchall(ScanTest):
             '/q': self.DummyViewCallableQ(),
             }
         self.prepare_catchall(target_classinfo=self.DummyViewCallableB)
-        self.endpoint_test('/')
-        self.endpoint_missing_test('/q')
+        self.catchall_endpoint_test('/')
+        self.catchall_endpoint_missing_test('/q')
     
     def test_multiple_types(self):
         """ 'target_classinfo' is a tuple of classes. """
@@ -605,8 +673,8 @@ class TestAddCatchall(ScanTest):
         self.prepare_catchall(
             target_classinfo=(self.DummyViewCallableB, self.DummyViewCallableC)
             )
-        self.endpoint_test(['/b', '/c'])
-        self.endpoint_missing_test('/q')
+        self.catchall_endpoint_test(['/b', '/c'])
+        self.catchall_endpoint_missing_test('/q')
     
     def test_strict(self):
         """ When 'strict' is True, subject views must be instances of exactly
@@ -619,8 +687,22 @@ class TestAddCatchall(ScanTest):
             target_classinfo=self.DummyViewCallableA,
             strict=True,
             )
-        self.endpoint_test('/a')
-        self.endpoint_missing_test('/b')
+        self.catchall_endpoint_test('/a')
+        self.catchall_endpoint_missing_test('/b')
+    
+    # ----------------------- Multiple catchalls -----------------------
+    
+    def test_single_route_multiple_catchalls(self):
+        """ When multiple catchalls are added to a single route, they do not
+            raise a ConfigurationError. """
+        self.api_tree = {'/': self.dummy}
+        self.do_scan()
+        for item in [self.DummyViewCallable() for i in range(2)]:
+            add_catchall(
+                configurator=self.config,
+                api_tree=self.api_tree,
+                catchall=item,
+                )
 
 
 
