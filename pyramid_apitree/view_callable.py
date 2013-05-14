@@ -1,9 +1,6 @@
 """ Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
 import iomanager
-from iomanager import (
-    IOManager,
-    VerificationFailureError,
-    )
+from iomanager import IOManager
 
 class BaseViewCallable(object):
     def __init__(self, *pargs, **kwargs):
@@ -135,7 +132,7 @@ class APIViewCallable(FunctionViewCallable):
             if ikey not in ['required', 'optional', 'unlimited', 'returns']
             }
         
-        super(APIViewCallable, self).setup(remaining_kwargs)
+        super().setup(remaining_kwargs)
     
     def wrapped_call(self, **kwargs):
         coerced_kwargs = self.manager.coerce_input(kwargs)
