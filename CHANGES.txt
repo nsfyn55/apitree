@@ -15,12 +15,12 @@ v0.1.0, 2013-04-05 -- Working release.
 
 v0.1.0a, 2013-04-08 -- Beta: API documentation
 - Add 'api_documentation' module.
-- Add 'prepare_item' function to prepare 'iospec' values for rendering in HTML and
-  JSON.
+- Add 'prepare_item' function to prepare 'iospec' values for rendering in HTML
+  and JSON.
 
 v0.2.0, 2013-04-21 -- API documentation
-- 'APIDocumentationMaker' class scans an API tree and creates an API documentation
-  dictionary.
+- 'APIDocumentationMaker' class scans an API tree and creates an API
+  documentation dictionary.
 - Customization of API documentation by subclassing 'APIDocumentationMaker'.
 - 'api_doc_template.mak': Built-in Mako template that displays an API
   documentation web page. Contributed by Dan Kruse!
@@ -30,3 +30,11 @@ v0.2.0, 2013-04-21 -- API documentation
 v0.3.0, 2013-04-30 -- Python 3.3.1
 - Refactor to work with Python 3.3.1.
 - Python 2.x no longer supported starting with this release.
+
+v0.3.1, 2013-05-14 -- Catchall; 'Sequence' tree
+- 'add_catchall': New function allows user to add 'catchall' endpoints.
+- Request methods must be instances of new 'RequestMethod' class.
+- Tuple locations and branches: Branch locations can be tuples of paths and/or
+  request methods. Branch objects can be tuples of view callables or sub-trees.
+- Sequence tree: API tree can be a list of 2-length tuples. This guarantees the
+  order in which views are added to the Pyramid configurator.

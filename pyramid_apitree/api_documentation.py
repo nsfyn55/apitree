@@ -2,16 +2,22 @@
 import inspect
 import json
 import os.path
+from collections.abc import(
+    Sequence,
+    Mapping,
+    )
 from mako.template import Template
 from iomanager import ListOf
 from iomanager.iomanager import NotProvided
 from pyramid.response import Response
 
+from . import tree_scan
 from .view_callable import SimpleViewCallable
 from .tree_scan import (
-    ALL_REQUEST_METHODS,
+    ALL_REQUEST_METHOD_STRINGS,
     get_endpoints,
     )
+from .util import is_container
 
 INDENT_STR = '    '
 
@@ -48,9 +54,9 @@ class APIDocumentationMaker(object):
         return '\n'.join([INDENT_STR + line for line in s.splitlines()])
     
     def prepare(self, value):
-        if isinstance(value, (list, tuple)):
+        if is_container(value, Sequence):
             return self.prepare_list(value)
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             return self.prepare_dict(value)
         if isinstance(value, ListOf):
             return self.prepare_listof(value)
@@ -82,12 +88,12 @@ class APIDocumentationMaker(object):
         start, end = 'ListOf(', ')'
         
         iospec_obj = value.iospec_obj
-        if not isinstance(iospec_obj, (list, dict)):
-            joiner = ''
-            wrapped = self.prepare(iospec_obj)
-        else:
+        if is_container(iospec_obj, (Sequence, Mapping, ListOf)):
             joiner = '\n'
             wrapped = self.indent(self.prepare(iospec_obj))
+        else:
+            joiner = ''
+            wrapped = self.prepare(iospec_obj)
         
         return joiner.join([start, wrapped, end])
     
@@ -118,7 +124,7 @@ class APIDocumentationMaker(object):
             for item in endpoint_list:
                 request_methods = item.get(
                     'request_method',
-                    ALL_REQUEST_METHODS,
+                    ALL_REQUEST_METHOD_STRINGS,
                     )
                 method_key = ', '.join(request_methods)
                 
