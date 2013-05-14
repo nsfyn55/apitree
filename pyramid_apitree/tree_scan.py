@@ -24,8 +24,9 @@ class RequestMethod(object):
 
 ALL_REQUEST_METHOD_STRINGS = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD']
 
-GET, POST, PUT, DELETE, HEAD = \
-ALL_REQUEST_METHODS = tuple(map(RequestMethod, ALL_REQUEST_METHOD_STRINGS))
+GET, POST, PUT, DELETE, HEAD = tuple(
+    map(RequestMethod, ALL_REQUEST_METHOD_STRINGS)
+    )
 
 def conglomerate_endpoints(endpoints_dicts_list):
     result = {}
@@ -196,7 +197,8 @@ def add_catchall(
             request_method_list.extend(imethod)
         request_method = tuple(set(request_method_list))
         
-        result = {}
+        result = {'custom_predicates': (catchall.catchall_custom_predicate, )}
+        
         if request_method:
             result.update({'request_method': request_method})
         
@@ -222,6 +224,12 @@ def add_catchall(
     target_test = strict_test if strict else nonstrict_test
     
     endpoints = get_endpoints(api_tree)
+    
+    if not hasattr(catchall, 'catchall_custom_predicate'):
+        def catchall_custom_predicate(context, request):
+            return True
+        
+        catchall.catchall_custom_predicate = catchall_custom_predicate
     
     for complete_route, view_dicts_list in endpoints.items():
         if target_classinfo is not None:

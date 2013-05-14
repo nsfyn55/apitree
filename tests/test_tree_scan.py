@@ -580,7 +580,7 @@ class TestAddCatchall(ScanTest):
         self.catchall_endpoint_test('/', **{
             'x': 'y',
             'custom_predicates': (
-                pyramid_apitree.tree_scan.catchall_custom_predicate,
+                self.target.catchall_custom_predicate,
                 )
             })
     
