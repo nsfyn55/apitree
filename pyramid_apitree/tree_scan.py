@@ -45,8 +45,8 @@ def parse_branch(branch_location, branch_obj, root_path):
         if all(
             [isinstance(item, RequestMethod) for item in branch_location]
             ):
-            # 'branch_location' is a tuple of request methods. Sum to a single
-            # request method.
+            # 'branch_location' is a sequence of request methods. Sum to a
+            # single request method.
             branch_location = sum(branch_location, RequestMethod())
             
         else:
@@ -165,12 +165,92 @@ def scan_api_tree(configurator, api_tree, root_path=''):
                 **view_dict
                 )
 
+def make_uppercase_tuple(value):
+    if is_container(value, Sequence):
+        return tuple([item.upper() for item in value])
+    return tuple([value.upper()])
+
+def get_catchall_kwargs(
+    catchall,
+    view_dicts_list,
+    view_kwargs,
+    additional_view_kwargs,
+    target_request_method,
+    ):
+    request_method_list = []
+    for imethod in [
+        item.get('request_method', tuple()) for item in view_dicts_list
+        ]:
+        imethod = make_uppercase_tuple(imethod)
+        request_method_list.extend(imethod)
+    request_method = tuple(set(request_method_list))
+    
+    if target_request_method is not None:
+        request_method = tuple(set(request_method) & set(target_request_method))
+    
+    result = {'custom_predicates': (catchall.catchall_custom_predicate, )}
+    
+    if request_method:
+        result.update({'request_method': request_method})
+    
+    if view_kwargs:
+        result.update(view_kwargs)
+    else:
+        result.update(getattr(catchall, 'view_kwargs', {}))
+    
+    result.update(additional_view_kwargs)
+    
+    return result
+
+def view_is_qualified(
+    view_dict,
+    target_view_kwargs=None,
+    target_request_method=None,
+    target_classinfo=None,
+    strict=False,
+    ):
+    view_dict = view_dict.copy()
+    view = view_dict.pop('view')
+    
+    if target_request_method is not None:
+        target_rm_set = set(target_request_method)
+        
+        view_request_method = make_uppercase_tuple(
+            view_dict.pop('request_method', tuple())
+            )
+        
+        view_rm_set = set(view_request_method)
+        
+        if not view_rm_set & target_rm_set:
+            return False
+    
+    if target_view_kwargs is not None:
+        target_vk_set = set(target_view_kwargs.items())
+        view_vk_set = set(view_dict.items())
+        if not view_vk_set >= target_vk_set:
+            return False
+    
+    if target_classinfo is not None:
+        if not isinstance(target_classinfo, tuple):
+            target_classinfo = (target_classinfo, )
+        if strict:
+            subject_type = type(view)
+            if not subject_type in target_classinfo:
+                return False
+        else:
+            if not isinstance(view, target_classinfo):
+                return False
+    
+    return True
+
 def add_catchall(
     configurator,
     api_tree,
     catchall,
     view_kwargs=None,
     additional_view_kwargs={},
+    target_view_kwargs=None,
+    target_request_method=None,
     target_classinfo=None,
     strict=False,
     ):
@@ -178,50 +258,16 @@ def add_catchall(
         
         By default, the catchall is added to every route in the API tree.
         
-        If 'target_class' is specified, the catchall will only be added to
-        routes where a view callable of 'target_class' has been registered.
+        If any of 'target_classinfo', 'target_view_kwargs', or
+        'target_request_method' is specified, the catchall will only be added to
+        routes where a view callable matching all of these conditions is
+        present.
         
-        'catchall' MUST have distinct predicates for EVERY route where it will
-        be registered; otherwise a pyramid.exceptions.ConfigurationError will
-        be raised. """
+        'strict' indicates that 'target_classinfo' does not match
+        subclasses. """
     
-    def get_catchall_kwargs(
-        catchall, view_dicts_list, view_kwargs, additional_view_kwargs
-        ):
-        request_method_list = []
-        for imethod in [
-            item.get('request_method', tuple()) for item in view_dicts_list
-            ]:
-            if not is_container(imethod, Sequence):
-                imethod = (imethod, )
-            request_method_list.extend(imethod)
-        request_method = tuple(set(request_method_list))
-        
-        result = {'custom_predicates': (catchall.catchall_custom_predicate, )}
-        
-        if request_method:
-            result.update({'request_method': request_method})
-        
-        if view_kwargs:
-            result.update(view_kwargs)
-        else:
-            result.update(getattr(catchall, 'view_kwargs', {}))
-        
-        result.update(additional_view_kwargs)
-        
-        return result
-    
-    def strict_test(view_dict):
-        subject_type = type(view_dict['view'])
-        for iclass in target_classinfo:
-            if subject_type is iclass:
-                return True
-        return False
-    
-    def nonstrict_test(view_dict):
-        return isinstance(view_dict['view'], target_classinfo)
-    
-    target_test = strict_test if strict else nonstrict_test
+    if target_request_method is not None:
+        target_request_method = make_uppercase_tuple(target_request_method)
     
     endpoints = get_endpoints(api_tree)
     
@@ -232,14 +278,25 @@ def add_catchall(
         catchall.catchall_custom_predicate = catchall_custom_predicate
     
     for complete_route, view_dicts_list in endpoints.items():
-        if target_classinfo is not None:
-            if not isinstance(target_classinfo, tuple):
-                target_classinfo = (target_classinfo, )
-            if not any(map(target_test, view_dicts_list)):
-                continue
+        qualified_views = [
+            item for item in view_dicts_list
+            if view_is_qualified(
+                item,
+                target_view_kwargs,
+                target_request_method,
+                target_classinfo,
+                strict,
+                )
+            ]
+        if not qualified_views:
+            continue
         
         catchall_kwargs = get_catchall_kwargs(
-            catchall, view_dicts_list, view_kwargs, additional_view_kwargs
+            catchall,
+            qualified_views,
+            view_kwargs,
+            additional_view_kwargs,
+            target_request_method,
             )
         
         catchall_kwargs.update(additional_view_kwargs)
