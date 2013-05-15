@@ -371,7 +371,7 @@ class TestViewKwargs(ScanTest):
             }
         self.endpoint_test('', request_method=GET)
 
-class TestAddCatchall(ScanTest):
+class AddCatchallTest(ScanTest):
     """ Test 'add_catchall' function. """
     
     class DummyViewCallable(object):
@@ -438,8 +438,9 @@ class TestAddCatchall(ScanTest):
     def catchall_test(self, paths, **kwargs):
         self.prepare_catchall()
         self.catchall_endpoint_test(paths, **kwargs)
-    
-    # --------------------- 'add_catchall' passes. ---------------------
+
+class TestAddCatchallPasses(AddCatchallTest):
+    """ Test 'add_catchall' passes in expected situations. """
     
     def test_duplicate_predicates_passes(self):
         """ By default, 'add_catchall' adds a custom predicate to the 'catchall'
@@ -458,8 +459,11 @@ class TestAddCatchall(ScanTest):
         self.api_tree = {'/': self.DummyViewCallableA()}
         self.do_scan()
         self.add_target_catchall()
+
+class TestAddCatchallPredicateSources(AddCatchallTest):
+    """ Sources for 'predicate' 'view_kwargs' values. """
     
-    # ----------------------- Predicate sources ------------------------
+    # ----------------------- Generic predicates -----------------------
     
     @contextmanager
     def predicates_test_context(self):
@@ -601,6 +605,9 @@ class TestAddCatchall(ScanTest):
     def test_view_kwargs_compliments_custom_predicates(self):
         with self.compliments_custom_predicates_test_context():
             self.prepare_catchall(view_kwargs={'x': 'y'})
+
+class TestAddCatchallRoutes(AddCatchallTest):
+    """ 'add_catchall' works with various route configurations. """
     
     # ---------------- Catchall added to subject views -----------------
     
@@ -627,7 +634,22 @@ class TestAddCatchall(ScanTest):
             }
         self.catchall_test(['/a', '/b'])
     
-    # --------- Catchall added to specific subject view class ----------
+    def test_single_route_multiple_catchalls(self):
+        """ When multiple catchalls are added to a single route, they do not
+            raise a ConfigurationError. """
+        self.api_tree = {'/': self.dummy}
+        self.do_scan()
+        for item in [self.DummyViewCallable() for i in range(2)]:
+            add_catchall(
+                configurator=self.config,
+                api_tree=self.api_tree,
+                catchall=item,
+                )
+            self.target = item
+            self.catchall_endpoint_test('/')
+
+class TestAddCatchallTypeTargeting(AddCatchallTest):
+    """ 'add_catchall' only applies to views of specified types. """
     
     def test_specific_type(self):
         """ Add catchall only to views of a specific type. """
@@ -689,20 +711,6 @@ class TestAddCatchall(ScanTest):
             )
         self.catchall_endpoint_test('/a')
         self.catchall_endpoint_missing_test('/b')
-    
-    # ----------------------- Multiple catchalls -----------------------
-    
-    def test_single_route_multiple_catchalls(self):
-        """ When multiple catchalls are added to a single route, they do not
-            raise a ConfigurationError. """
-        self.api_tree = {'/': self.dummy}
-        self.do_scan()
-        for item in [self.DummyViewCallable() for i in range(2)]:
-            add_catchall(
-                configurator=self.config,
-                api_tree=self.api_tree,
-                catchall=item,
-                )
 
 
 
