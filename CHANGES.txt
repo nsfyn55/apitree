@@ -38,3 +38,7 @@ v0.3.1, 2013-05-14 -- Catchall; 'Sequence' tree
   request methods. Branch objects can be tuples of view callables or sub-trees.
 - Sequence tree: API tree can be a list of 2-length tuples. This guarantees the
   order in which views are added to the Pyramid configurator.
+
+v0.3.2, 2013-05-15 -- Catchall targeting
+- 'target_view_kwargs', 'target_request_method': New parameters to
+  'add_catchall' function.

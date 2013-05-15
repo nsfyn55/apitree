@@ -20,8 +20,6 @@ import pyramid_apitree.tree_scan
 from pyramid_apitree.exc import APITreeError
 from pyramid_apitree.util import is_container
 
-pytestmark = pytest.mark.current
-
 """ An example API tree.
     
     api_tree = {
@@ -721,7 +719,6 @@ class TestAddCatchallTargetClassinfo(AddCatchallTest):
         self.catchall_endpoint_test('/a')
         self.catchall_endpoint_missing_test('/b')
     
-    @pytest.mark.o
     def test_selective_request_method(self):
         self.api_tree = {
             '/': {
@@ -780,7 +777,6 @@ class AddCatchallTargetViewKwargs(AddCatchallTest):
         self.prepare_catchall(target_view_kwargs={'x': 'y'})
         self.catchall_endpoint_test('/')
     
-    @pytest.mark.o
     def test_selective_request_method(self):
         self.api_tree = {
             '/': {
@@ -792,12 +788,10 @@ class AddCatchallTargetViewKwargs(AddCatchallTest):
         self.catchall_endpoint_test('/', request_method=GET)
         self.catchall_endpoint_missing_test('/', request_method=POST)
 
-@pytest.mark.a
 class AddCatchallTargetRequestMethod(AddCatchallTest):
     """ 'add_catchall' only applies to views that match the specified
         'target_request_method' predicate. """
     
-    @pytest.mark.x
     def test_no_request_method_in_tree_passes(self):
         """ When items in the API tree do not have a 'request_method' predicate,
             using 'target_request_method' does not raise any errors. """
@@ -809,12 +803,10 @@ class AddCatchallTargetRequestMethod(AddCatchallTest):
         self.api_tree = {subject: self.dummy}
         self.prepare_catchall(target_request_method=target)
     
-    @pytest.mark.x
     def test_simple_miss(self):
         self.prepare_test(GET, 'POST')
         self.catchall_endpoint_missing_test('', request_method=POST)
     
-    @pytest.mark.x
     def test_complex_miss(self):
         self.prepare_test((GET, POST), ('PUT', 'DELETE'))
         for item in [PUT, DELETE, (PUT, DELETE)]:
@@ -824,31 +816,24 @@ class AddCatchallTargetRequestMethod(AddCatchallTest):
         self.prepare_test(subject, target)
         self.catchall_endpoint_test('', request_method=expected)
     
-    @pytest.mark.x
     def test_simple_match(self):
         self.match_test(GET, 'GET', GET)
     
-    @pytest.mark.x
     def test_complex_match_subject(self):
         self.match_test((GET, POST), 'GET', GET)
     
-    @pytest.mark.x
     def test_complex_match_target(self):
         self.match_test(GET, ('GET', 'POST'), GET)
     
-    @pytest.mark.x
     def test_complex_match_both(self):
         self.match_test((GET, POST), ('POST', 'PUT'), POST)
     
-    @pytest.mark.x
     def test_simple_different_cases_match(self):
         self.match_test(GET, 'gEt', GET)
     
-    @pytest.mark.x
     def test_complex_different_cases_match(self):
         self.match_test((GET, POST), ('pOsT', 'pUt'), POST)
     
-    @pytest.mark.q
     def test_different_cases_match_view_kwargs(self):
         """ When 'request_method' is provided in the subject view's
             'view_kwargs' attribute, differing cases still match. """
@@ -858,7 +843,6 @@ class AddCatchallTargetRequestMethod(AddCatchallTest):
         self.prepare_catchall(target_request_method='PoSt')
         self.catchall_endpoint_test('/', request_method=POST)
     
-    @pytest.mark.x
     def test_multiple_views_match(self):
         self.api_tree = {
             GET: self.dummy,
