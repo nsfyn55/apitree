@@ -20,6 +20,8 @@ import pyramid_apitree.tree_scan
 from pyramid_apitree.exc import APITreeError
 from pyramid_apitree.util import is_container
 
+pytestmark = pytest.mark.current
+
 """ An example API tree.
     
     api_tree = {
@@ -50,17 +52,20 @@ from pyramid_apitree.util import is_container
     
     """
 
-def make_set(value):
+def make_uppercase_tuple(value):
     if isinstance(value, tuple):
-        return set(value)
-    return set((value, ))
+        result_list = [item.upper() for item in value]
+    else:
+        result_list = [value.upper()]
+    
+    return tuple(sorted(result_list))
 
-def make_request_method_set(value):
+def make_request_method_tuple(value):
     """ Converts RequestMethod instances into request method strings. All
         results are tuples. """
     if isinstance(value, tuple):
-        return set(sum(value, RequestMethod()).request_method)
-    return set(value.request_method)
+        return tuple(sorted(sum(value, RequestMethod()).request_method))
+    return tuple(sorted(value.request_method))
 
 class MockConfigurator(object):
     """ A mocked Pyramid configurator. """
@@ -71,7 +76,7 @@ class MockConfigurator(object):
         view_dict = kwargs.copy()
         
         if 'request_method' in view_dict:
-            view_dict['request_method'] = make_set(
+            view_dict['request_method'] = make_uppercase_tuple(
                 view_dict['request_method']
                 )
         
@@ -164,7 +169,7 @@ class ScanTest(unittest.TestCase):
         
         expected_dict = expected_predicates.copy()
         if 'request_method' in expected_dict:
-            expected_dict['request_method'] = make_request_method_set(
+            expected_dict['request_method'] = make_request_method_tuple(
                 expected_dict['request_method']
                 )
         
@@ -185,7 +190,6 @@ class ScanTest(unittest.TestCase):
     
     def endpoint_missing_test(self, *pargs, **kwargs):
         paths, expected = self.prepare_endpoint_test(*pargs, **kwargs)
-        
         for path in paths:
             assert expected not in self.config.routes[path]['views']
 
@@ -369,6 +373,11 @@ class TestViewKwargs(ScanTest):
         self.api_tree = {
             GET: self.target,
             }
+        self.endpoint_test('', request_method=GET)
+    
+    def test_request_method_from_view_kwargs(self):
+        self.target.view_kwargs = {'request_method': 'GET'}
+        self.api_tree = {'': self.target}
         self.endpoint_test('', request_method=GET)
 
 class AddCatchallTest(ScanTest):
@@ -648,7 +657,7 @@ class TestAddCatchallRoutes(AddCatchallTest):
             self.target = item
             self.catchall_endpoint_test('/')
 
-class TestAddCatchallTypeTargeting(AddCatchallTest):
+class TestAddCatchallTargetClassinfo(AddCatchallTest):
     """ 'add_catchall' only applies to views of specified types. """
     
     def test_specific_type(self):
@@ -711,6 +720,152 @@ class TestAddCatchallTypeTargeting(AddCatchallTest):
             )
         self.catchall_endpoint_test('/a')
         self.catchall_endpoint_missing_test('/b')
+    
+    @pytest.mark.o
+    def test_selective_request_method(self):
+        self.api_tree = {
+            '/': {
+                GET: self.DummyViewCallableB(),
+                POST: self.DummyViewCallableC(),
+                }   
+            }
+        self.prepare_catchall(
+            target_classinfo=self.DummyViewCallableB
+            )
+        self.catchall_endpoint_test('/', request_method=GET)
+        self.catchall_endpoint_missing_test('/', request_method=POST)
+
+class AddCatchallTargetViewKwargs(AddCatchallTest):
+    """ 'add_catchall' only applies to views that match the specified
+        'target_view_kwargs' values. """
+    
+    def prepare_test(self, subject, target):
+        self.api_tree = {
+            '/': self.DummyViewCallable(**subject)
+            }
+        self.prepare_catchall(target_view_kwargs=target)
+    
+    def miss_test(self, *pargs):
+        self.prepare_test(*pargs)
+        self.catchall_endpoint_missing_test('/')
+    
+    def test_miss(self):
+        self.miss_test({'x': 'y'}, {'x': 'z'})
+    
+    def test_partial_miss(self):
+        """ If a view does not match every view kwarg specified in
+            'target_view_kwargs', then the catchall IS NOT applied. """
+        self.miss_test({'x': 'y'}, {'x': 'y', 'a': 'b'})
+    
+    def match_test(self, *pargs):
+        self.prepare_test(*pargs)
+        self.catchall_endpoint_test('/')
+    
+    def test_match(self):
+        self.match_test({'x': 'y'}, {'x': 'y'})
+    
+    def test_partial_match(self):
+        """ If a view matches every view kwarg specified in
+            'target_view_kwargs', and the view has additional view kwargs not
+            included in 'target_view_kwargs', then the catchall IS applied. """
+        self.match_test({'x': 'y', 'a': 'b'}, {'x': 'y'})
+    
+    def test_multiple_views_match(self):
+        self.api_tree = {
+            '/': (
+                self.DummyViewCallable(x='y'),
+                self.DummyViewCallable(a='b'),
+                )
+            }
+        self.prepare_catchall(target_view_kwargs={'x': 'y'})
+        self.catchall_endpoint_test('/')
+    
+    @pytest.mark.o
+    def test_selective_request_method(self):
+        self.api_tree = {
+            '/': {
+                GET: self.DummyViewCallable(x='y'),
+                POST: self.DummyViewCallable(a='b'),
+                }
+            }
+        self.prepare_catchall(target_view_kwargs={'x': 'y'})
+        self.catchall_endpoint_test('/', request_method=GET)
+        self.catchall_endpoint_missing_test('/', request_method=POST)
+
+@pytest.mark.a
+class AddCatchallTargetRequestMethod(AddCatchallTest):
+    """ 'add_catchall' only applies to views that match the specified
+        'target_request_method' predicate. """
+    
+    @pytest.mark.x
+    def test_no_request_method_in_tree_passes(self):
+        """ When items in the API tree do not have a 'request_method' predicate,
+            using 'target_request_method' does not raise any errors. """
+        self.api_tree = {'/': self.dummy}
+        self.prepare_catchall(target_request_method='GET')
+    
+    def prepare_test(self, subject, target):
+        """ 'subject' is a RequestMethod instance, 'target' is a string. """
+        self.api_tree = {subject: self.dummy}
+        self.prepare_catchall(target_request_method=target)
+    
+    @pytest.mark.x
+    def test_simple_miss(self):
+        self.prepare_test(GET, 'POST')
+        self.catchall_endpoint_missing_test('', request_method=POST)
+    
+    @pytest.mark.x
+    def test_complex_miss(self):
+        self.prepare_test((GET, POST), ('PUT', 'DELETE'))
+        for item in [PUT, DELETE, (PUT, DELETE)]:
+            self.catchall_endpoint_missing_test('', request_method=item)
+    
+    def match_test(self, subject, target, expected):
+        self.prepare_test(subject, target)
+        self.catchall_endpoint_test('', request_method=expected)
+    
+    @pytest.mark.x
+    def test_simple_match(self):
+        self.match_test(GET, 'GET', GET)
+    
+    @pytest.mark.x
+    def test_complex_match_subject(self):
+        self.match_test((GET, POST), 'GET', GET)
+    
+    @pytest.mark.x
+    def test_complex_match_target(self):
+        self.match_test(GET, ('GET', 'POST'), GET)
+    
+    @pytest.mark.x
+    def test_complex_match_both(self):
+        self.match_test((GET, POST), ('POST', 'PUT'), POST)
+    
+    @pytest.mark.x
+    def test_simple_different_cases_match(self):
+        self.match_test(GET, 'gEt', GET)
+    
+    @pytest.mark.x
+    def test_complex_different_cases_match(self):
+        self.match_test((GET, POST), ('pOsT', 'pUt'), POST)
+    
+    @pytest.mark.q
+    def test_different_cases_match_view_kwargs(self):
+        """ When 'request_method' is provided in the subject view's
+            'view_kwargs' attribute, differing cases still match. """
+        self.api_tree = {
+            '/': self.DummyViewCallable(request_method='pOsT')
+            }
+        self.prepare_catchall(target_request_method='PoSt')
+        self.catchall_endpoint_test('/', request_method=POST)
+    
+    @pytest.mark.x
+    def test_multiple_views_match(self):
+        self.api_tree = {
+            GET: self.dummy,
+            POST: self.dummy,
+            }
+        self.prepare_catchall(target_request_method='GET')
+        self.catchall_endpoint_test('', request_method=GET)
 
 
 
