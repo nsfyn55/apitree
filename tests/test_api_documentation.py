@@ -4,7 +4,7 @@ import unittest
 import pytest
 
 from iomanager import ListOf
-from pyramid_apitree import (
+from apitree import (
     APIViewCallable,
     SimpleViewCallable,
     simple_view,
@@ -13,7 +13,7 @@ from pyramid_apitree import (
     GET,
     POST,
     )
-from pyramid_apitree.api_documentation import (
+from apitree.api_documentation import (
     APIDocumentationMaker,
     PreparationFailureError,
     )
@@ -193,7 +193,7 @@ class TestCreateDocumentationSkipSpecialKeys(unittest.TestCase):
 
 class TestCreateDocumentationViewCallables(unittest.TestCase):
     """ Confirm that 'create_documentation' is able to handle view callables of
-        every type included in 'pyramid_apitree', without raising any
+        every type included in 'apitree', without raising any
         errors. """
     
     def view_callable_test(self, view_callable_class):

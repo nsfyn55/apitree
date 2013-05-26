@@ -1,4 +1,4 @@
-""" Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+""" Copyright (c) 2013 Josh Matthias <python.apitree@gmail.com> """
 
 def is_container(obj, classinfo):
     """ 'obj' is an instance of 'classinfo', but is not a 'str' or 'bytes'

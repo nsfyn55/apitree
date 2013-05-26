@@ -1,15 +1,15 @@
-""" Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+""" Copyright (c) 2013 Josh Matthias <python.apitree@gmail.com> """
 
 import unittest
 import pytest
 import iomanager
 
-from pyramid_apitree import (
+from apitree import (
     simple_view,
     function_view,
     api_view,
     )
-from pyramid_apitree.view_callable import (
+from apitree.view_callable import (
     BaseViewCallable,
     SimpleViewCallable,
     FunctionViewCallable,

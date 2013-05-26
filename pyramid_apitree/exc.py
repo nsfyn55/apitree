@@ -1,4 +1,4 @@
-""" Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+""" Copyright (c) 2013 Josh Matthias <python.apitree@gmail.com> """
 
 class Error(Exception):
     """ Base class for errors. """
