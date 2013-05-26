@@ -1,2 +1,2 @@
 include *.txt *.md
-recursive-include pyramid_apitree *.mako
+recursive-include apitree *.mako
