@@ -1,16 +1,16 @@
 from setuptools import setup
 
 setup(
-    name='pyramid_apitree',
-    version='0.3.2',
+    name='apitree',
+    version='0.3.3',
     author='Josh Matthias',
-    author_email='pyramid.apitree@gmail.com',
-    packages=['pyramid_apitree'],
+    author_email='python.apitree@gmail.com',
+    packages=['apitree'],
     scripts=[],
     include_package_data=True,
-    url='https://github.com/jmatthias/pyramid_apitree',
+    url='https://github.com/jmatthias/apitree',
     license='LICENSE.txt',
-    description=('Build an orderly web service API from Pyramid views.'),
+    description=('Build an orderly web service API backend.'),
     long_description=open('README_pypi.txt').read(),
     install_requires=[
         'iomanager>=0.4.0',

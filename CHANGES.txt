@@ -42,3 +42,6 @@ v0.3.1, 2013-05-14 -- Catchall; 'Sequence' tree
 v0.3.2, 2013-05-15 -- Catchall targeting
 - 'target_view_kwargs', 'target_request_method': New parameters to
   'add_catchall' function.
+
+v0.3.3, 2013-05-26 -- 'apitree'
+- Change distribution name to 'apitree' from 'pyramid_apitree'.

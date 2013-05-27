@@ -1,4 +1,4 @@
-""" Copyright (c) 2013 Josh Matthias <pyramid.apitree@gmail.com> """
+""" Copyright (c) 2013 Josh Matthias <python.apitree@gmail.com> """
 
 import unittest
 import pyramid.exceptions
@@ -6,7 +6,7 @@ import pytest
 from contextlib import contextmanager
 from copy import deepcopy
 
-from pyramid_apitree import (
+from apitree import (
     scan_api_tree,
     add_catchall,
     RequestMethod,
@@ -16,9 +16,9 @@ from pyramid_apitree import (
     DELETE,
     HEAD,
     )
-import pyramid_apitree.tree_scan
-from pyramid_apitree.exc import APITreeError
-from pyramid_apitree.util import is_container
+import apitree.tree_scan
+from apitree.exc import APITreeError
+from apitree.util import is_container
 
 """ An example API tree.
     
